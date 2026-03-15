@@ -1,0 +1,3 @@
+-keep class com.idlegame.revolution.game.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
