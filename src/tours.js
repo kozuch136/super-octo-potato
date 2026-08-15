@@ -5,12 +5,27 @@ export const TOURS_KEY = 'onboarding-tours';
 // Kazdy samouczek to lista krokow {id, selector, heading, description}.
 // `selector` jest uzywany tylko przez rozszerzenie przegladarki
 // (podswietlenie prawdziwego pola na danej stronie Jiry); panel Forge
-// pokazuje wylacznie pierwszy samouczek (`ticket-creation`) i ignoruje
-// `selector` (podswietla wlasna makiete po `id` - patrz
+// pokazuje wylacznie pierwszy samouczek dla pracownikow (`ticket-creation`)
+// i ignoruje `selector` (podswietla wlasna makiete po `id` - patrz
 // static/onboarding-panel/src/App.jsx). Samouczki #2-5 nie maja naturalnego
 // miejsca w panelu Forge (dotycza innych ekranow niz widok zgloszenia,
 // ktorych Forge Custom UI nie widzi - patrz README) - dzialaja tylko w
 // rozszerzeniu przegladarki.
+//
+// `audience` mowi, ktory NATYWNY panel Forge (mock-spotlight) ma pokazac
+// dany samouczek jako pierwszy/domyslny - nie decyduje o tym, czy trafia do
+// rozszerzenia przegladarki (rozszerzenie dostaje WSZYSTKIE samouczki,
+// niezaleznie od audience, i samo wykrywa na ktorej stronie jest uzytkownik):
+// - "employee" (domyslne, jesli brak pola) - panel na widoku zgloszenia
+//   (jira:issuePanel) pokazuje pierwszy samouczek z tym audience.
+// - "customer" - panel na portalu klienta JSM
+//   (jiraServiceManagement:portalRequestCreatePropertyPanel, patrz
+//   static/portal-request-panel/) pokazuje samouczki z tym audience.
+//   Typowo uzytkownicy portalu to pracownicy BEZ licencji Jira (obsluga
+//   wewnetrznych zgloszen jako "klienci" service desk, np. do HR/IT) - maja
+//   firmowe komputery z tym samym rozszerzeniem, wiec ono tez dziala na
+//   portalu (podswietla prawdziwe pola formularza requestu), nie tylko
+//   panel Forge z makieta.
 //
 // Firma podmienia tresc (w tym selektory) w panelu admina zgodnie z
 // wlasna procedura i rzeczywista struktura swojej instancji Jiry.
@@ -19,6 +34,7 @@ export const DEFAULT_TOURS = [
     id: 'ticket-creation',
     title: 'Zakladanie zgloszenia',
     description: 'Jak poprawnie wypelnic nowy ticket zgodnie z procedura firmy.',
+    audience: 'employee',
     steps: [
       {
         id: 'summary',
@@ -61,6 +77,7 @@ export const DEFAULT_TOURS = [
     id: 'board-navigation',
     title: 'Praca z tablica (Kanban/Scrum)',
     description: 'Jak czytac tablice i poprawnie przenosic zgloszenia miedzy statusami.',
+    audience: 'employee',
     steps: [
       {
         id: 'board-columns',
@@ -89,6 +106,7 @@ export const DEFAULT_TOURS = [
     id: 'search-filtering',
     title: 'Wyszukiwanie i filtrowanie zgloszen',
     description: 'Jak znalezc swoje zadania i zapisac przydatne filtry.',
+    audience: 'employee',
     steps: [
       {
         id: 'search-bar',
@@ -117,6 +135,7 @@ export const DEFAULT_TOURS = [
     id: 'commenting',
     title: 'Komentowanie i wspolpraca',
     description: 'Jak poprawnie komunikowac sie w zgloszeniu.',
+    audience: 'employee',
     steps: [
       {
         id: 'comment-box',
@@ -145,6 +164,7 @@ export const DEFAULT_TOURS = [
     id: 'workflow-transitions',
     title: 'Zmiana statusu zgloszenia (workflow)',
     description: 'Kiedy i jak przechodzic miedzy statusami zgodnie z procesem firmy.',
+    audience: 'employee',
     steps: [
       {
         id: 'workflow-status-button',
@@ -159,6 +179,41 @@ export const DEFAULT_TOURS = [
         heading: 'Ekran przejscia',
         description:
           'Niektore przejscia wymagaja dodatkowych informacji (np. przyczyny odrzucenia) - uzupelnij je przed zatwierdzeniem.',
+      },
+    ],
+  },
+  {
+    id: 'portal-request',
+    title: 'Zgloszenie prosby przez portal klienta',
+    description:
+      'Jak poprawnie wypelnic formularz zgloszenia na portalu klienta (Jira Service Management).',
+    audience: 'customer',
+    steps: [
+      {
+        id: 'portal-request-type',
+        selector: '[data-testid*="request-type"], [data-testid*="practice-selector"]',
+        heading: 'Typ zgloszenia',
+        description:
+          'Wybierz typ najlepiej pasujacy do Twojej prosby - to przyspiesza jej obsluge i kierowanie do wlasciwego zespolu.',
+      },
+      {
+        id: 'portal-summary',
+        selector: '[data-testid*="summary"] input, #summary',
+        heading: 'Podsumowanie',
+        description: 'Opisz krotko, jednym zdaniem, czego dotyczy zgloszenie.',
+      },
+      {
+        id: 'portal-description',
+        selector: '[data-testid*="description"] .ProseMirror, #description',
+        heading: 'Szczegoly',
+        description:
+          'Podaj jak najwiecej szczegolow: co sie stalo, kiedy, jakie kroki juz probowales - to skraca czas obslugi.',
+      },
+      {
+        id: 'portal-attachment',
+        selector: '[data-testid*="attachment"] input[type="file"], #file-uploader',
+        heading: 'Zalaczniki',
+        description: 'Dodaj zrzut ekranu lub plik, jesli to pomoze zespolowi zrozumiec problem.',
       },
     ],
   },

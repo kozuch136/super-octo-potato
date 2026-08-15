@@ -10,17 +10,16 @@ import {
 } from '@atlaskit/onboarding';
 import './App.css';
 
-// Panel pokazuje wylacznie pierwszy samouczek ("ticket-creation") - to
-// jedyny, ktory ma naturalne miejsce na widoku zgloszenia. Pozostale
-// samouczki (tablica, wyszukiwanie, komentowanie, workflow) dotycza innych
-// ekranow Jiry i dzialaja tylko w rozszerzeniu przegladarki - patrz
-// browser-extension/content/content.js oraz README.md.
-//
-// Panel renderuje uproszczona makiete pol zgloszenia i prowadzi po niej
-// samouczek typu spotlight. Rzeczywisty formularz zakladania ticketu
-// zyje poza tym iframe'em (ograniczenie Forge Custom UI), wiec makieta
-// pelni role "sciagawki" - tresc kazdego kroku konfiguruje admin tak,
-// by odzwierciedlala prawdziwa procedure firmy.
+// Panel na portalu klienta JSM - analogiczny do static/onboarding-panel/,
+// ale dla samouczkow oznaczonych audience: 'customer' (patrz src/tours.js).
+// Tak samo jak tam: to makieta pol formularza requestu, nie prawdziwy
+// formularz (Forge Custom UI nie ma dostepu do DOM poza wlasnym iframe).
+// Uzytkownicy tego portalu to zwykle pracownicy bez licencji Jira, ktorzy
+// maja tez rozszerzenie przegladarki na firmowym komputerze - ono realnie
+// podswietla prawdziwe pola tego samego formularza (patrz
+// browser-extension/content/content.js), wiec ten panel jest uzupelnieniem
+// (dziala zawsze, bez wzgledu na to, czy rozszerzenie jest zainstalowane),
+// a nie jedynym mechanizmem.
 const FieldMock = ({ name, label, children }) => (
   <SpotlightTarget name={name}>
     <div className="field-mock">
@@ -37,20 +36,18 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    invoke('getOnboardingTours')
+    invoke('getPortalTours')
       .then(async (tours) => {
-        const employeeTours = tours.filter((t) => t.audience !== 'customer');
-        const ticketTour =
-          employeeTours.find((t) => t.id === 'ticket-creation') || employeeTours[0] || null;
-        setTour(ticketTour);
-        if (!ticketTour) {
+        const requestTour = tours.find((t) => t.id === 'portal-request') || tours[0] || null;
+        setTour(requestTour);
+        if (!requestTour) {
           setLoading(false);
           return;
         }
-        const state = await invoke('getOnboardingState', { tourId: ticketTour.id });
+        const state = await invoke('getPortalOnboardingState', { tourId: requestTour.id });
         setSeen(state.seen);
         setLoading(false);
-        if (!state.seen && ticketTour.steps.length > 0) {
+        if (!state.seen && requestTour.steps.length > 0) {
           setActiveStep(0);
         }
       })
@@ -61,13 +58,13 @@ export default function App() {
     setActiveStep(-1);
     setSeen(true);
     await Promise.all([
-      invoke('markOnboardingSeen', { tourId: tour.id }),
-      invoke('recordTourFinished', { tourId: tour.id, outcome }),
+      invoke('markPortalOnboardingSeen', { tourId: tour.id }),
+      invoke('recordPortalTourFinished', { tourId: tour.id, outcome }),
     ]);
   };
 
   const restartTour = async () => {
-    await invoke('resetOnboardingState', { tourId: tour.id });
+    await invoke('resetPortalOnboardingState', { tourId: tour.id });
     setSeen(false);
     setActiveStep(0);
   };
@@ -75,7 +72,7 @@ export default function App() {
   const next = () => {
     const currentStep = tour.steps[activeStep];
     if (currentStep) {
-      invoke('recordStepSeen', { tourId: tour.id, stepId: currentStep.id }).catch(() => {});
+      invoke('recordPortalStepSeen', { tourId: tour.id, stepId: currentStep.id }).catch(() => {});
     }
     if (activeStep < tour.steps.length - 1) {
       setActiveStep(activeStep + 1);
@@ -93,11 +90,11 @@ export default function App() {
   return (
     <SpotlightManager>
       <div className="onboarding-panel">
-        <SectionMessage title="Jak poprawnie uzupelnic zgloszenie" appearance="information">
+        <SectionMessage title="Jak poprawnie zglosic prosbe" appearance="information">
           <p>
-            Ten przewodnik pokazuje krok po kroku, jak wypelnic ticket zgodnie z
-            procedura firmy. Kliknij pole ponizej, aby zobaczyc wskazowke, albo
-            uruchom pelny samouczek.
+            Ten przewodnik pokazuje krok po kroku, jak wypelnic formularz zgloszenia, zeby
+            zespol jak najszybciej mogl pomoc. Kliknij pole ponizej, aby zobaczyc wskazowke,
+            albo uruchom pelny samouczek.
           </p>
         </SectionMessage>
 

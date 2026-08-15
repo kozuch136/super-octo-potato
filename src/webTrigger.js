@@ -70,6 +70,12 @@ export async function handler(request) {
     };
   }
 
+  // Uwaga: zwracamy TU wszystkie samouczki, wlacznie z tymi oznaczonymi
+  // audience: 'customer' (np. "portal-request"). Te samouczki sa pisane dla
+  // portalu klienta JSM, ale jego uzytkownicy to zwykle pracownicy bez
+  // licencji Jira (obsluga wewnetrznych zgloszen jako "klienci" service
+  // desk) - maja firmowe komputery i to samo rozszerzenie przegladarki, wiec
+  // ma ono dzialac tez na portalu, nie tylko w standardowym widoku Jiry.
   const tours = await getTours();
   return {
     statusCode: 200,

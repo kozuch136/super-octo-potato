@@ -1,10 +1,12 @@
 # super-octo-potato — Onboarding dla nowych pracownikow w Jirze
 
 Dwa alternatywne wdrozenia jednego pomyslu: prosty odpowiednik Digital Adoption Platform (jak
-WalkMe) z pieciu przykladowymi samouczkami dla nowych pracownikow — zakladanie zgloszenia,
-praca z tablica, wyszukiwanie zgloszen, komentowanie i wspolpraca, zmiana statusu (workflow).
-Wybierz podejscie zalezne od tego, czy wazniejsza jest dystrybucja jako oficjalna appka Jiry, czy
-realne podswietlanie prawdziwych pol formularza na kazdym z tych ekranow:
+WalkMe) z szesciu przykladowymi samouczkami — piec dla pracownikow z licencja Jira (zakladanie
+zgloszenia, praca z tablica, wyszukiwanie zgloszen, komentowanie i wspolpraca, zmiana statusu
+workflow) oraz jeden dla portalu klienta JSM (jak poprawnie zglosic prosbe), z ktorego korzystaja
+takze pracownicy bez licencji Jira. Wybierz podejscie zalezne od tego, czy wazniejsza jest
+dystrybucja jako oficjalna appka Jiry, czy realne podswietlanie prawdziwych pol formularza na
+kazdym z tych ekranow:
 
 | | [`/` (Forge app)](#forge-app-glowny-katalog) | [`browser-extension/`](browser-extension/README.md) |
 |---|---|---|
@@ -33,9 +35,10 @@ Forge (zamiast polegac tylko na tajnosci adresu URL) — patrz
 [`browser-extension/auth/README.md`](browser-extension/auth/README.md).
 
 **Raport „kto sie zalogowal i co przeszedl”:** panel admina w Jirze (sekcja „Kto sie zalogowal i
-co przeszedl”) pokazuje liste osob, ktore uruchomily ktorykolwiek samouczek — zarowno w panelu
-Jiry (kazdy pracownik, po koncie Jira, bez logowania), jak i w rozszerzeniu przegladarki (tylko
-gdy wlaczono w nim logowanie) — z osobna kolumna postepu dla kazdego z pieciu samouczkow. To sa
+co przeszedl”) pokazuje liste osob, ktore uruchomily ktorykolwiek samouczek — z panelu na
+zgloszeniu (kazdy pracownik z licencja Jira, po koncie Jira, bez logowania), z panelu na portalu
+klienta JSM (pracownicy bez licencji Jira, po koncie Jira) oraz z rozszerzenia przegladarki (tylko
+gdy wlaczono w nim logowanie) — z osobna kolumna postepu dla kazdego z szesciu samouczkow. To sa
 dane osobowe (imie, e-mail) — poinformuj pracownikow, ze postep jest sledzony.
 
 ## Forge app (glowny katalog)
@@ -48,21 +51,34 @@ z procedura firmy.
 ## Co robi aplikacja
 
 - **Panel na widoku zgloszenia** (`jira:issuePanel`) — przy pierwszym wejsciu uzytkownika
-  uruchamia interaktywny samouczek typu "spotlight" dla pierwszego z pieciu samouczkow
-  („Zakladanie zgloszenia”): krok po kroku podswietla kolejne pola (priorytet, komponent, opis,
-  przypisanie...) i wyjasnia, jak je uzupelnic zgodnie z wewnetrzna procedura. Uzytkownik moze tez
-  recznie uruchomic samouczek ponownie w dowolnym momencie. Pozostale cztery samouczki (tablica,
-  wyszukiwanie, komentowanie, workflow) nie maja naturalnego miejsca w panelu Forge (dotycza innych
-  ekranow niz widok zgloszenia) — dzialaja wylacznie w rozszerzeniu przegladarki, patrz nizej.
+  uruchamia interaktywny samouczek typu "spotlight" dla pierwszego samouczka z `audience:
+  'employee'` („Zakladanie zgloszenia”): krok po kroku podswietla kolejne pola (priorytet,
+  komponent, opis, przypisanie...) i wyjasnia, jak je uzupelnic zgodnie z wewnetrzna procedura.
+  Uzytkownik moze tez recznie uruchomic samouczek ponownie w dowolnym momencie. Pozostale
+  samouczki dla pracownikow (tablica, wyszukiwanie, komentowanie, workflow) nie maja naturalnego
+  miejsca w panelu Forge (dotycza innych ekranow niz widok zgloszenia) — dzialaja wylacznie w
+  rozszerzeniu przegladarki, patrz nizej.
+- **Panel na portalu klienta JSM** (`jiraServiceManagement:portalRequestCreatePropertyPanel`) —
+  analogiczny panel na formularzu zgloszenia w portalu klienta, dla samouczka z `audience:
+  'customer'` („Jak poprawnie zglosic prosbe”). Uzytkownicy tego portalu to zwykle pracownicy bez
+  licencji Jira — panel dziala zawsze (bez wzgledu na to, czy maja rozszerzenie przegladarki), ale
+  jesli maja je na firmowym komputerze, rozszerzenie dodatkowo realnie podswietla prawdziwe pola
+  tego samego formularza (patrz `browser-extension/README.md`). Uzywa osobnej funkcji Forge
+  (`portalResolver`) odizolowanej od panelu pracownikow — portal moze byc skonfigurowany z
+  dostepem anonimowym, wiec traktujemy go jako inna granice zaufania.
 - **Strona administracyjna** (`jira:adminPage`, tylko dla adminow Jiry) — administrator definiuje
-  tresc wszystkich pieciu samouczkow (tytul + kroki, kazdy krok to naglowek + opis) tak, aby
-  odzwierciedlaly realna procedure firmy, bez zmian w kodzie, oraz widzi zbiorczy raport kto co
-  ukonczyl.
-- **„Moj postep” w ustawieniach osobistych** (`jira:personalSettingsPage`) — kazdy pracownik moze
-  sam sprawdzic swoj wlasny postep w kazdym z samouczkow (w panelu Jiry i/lub w rozszerzeniu
-  przegladarki, jesli z niego korzysta) bez czekania na admina.
+  tresc wszystkich samouczkow (tytul + kroki, kazdy krok to naglowek + opis, oraz pole „Odbiorcy”
+  wybierajace `employee`/`customer`) tak, aby odzwierciedlaly realna procedure firmy, bez zmian w
+  kodzie, oraz widzi zbiorczy raport kto co ukonczyl.
+- **„Moj postep” w ustawieniach osobistych** (`jira:personalSettingsPage`) — kazdy pracownik z
+  licencja Jira moze sam sprawdzic swoj wlasny postep w kazdym z samouczkow (w panelu Jiry i/lub w
+  rozszerzeniu przegladarki, jesli z niego korzysta) bez czekania na admina.
 - **Stan per uzytkownik i per samouczek** — Forge Storage API zapamietuje, czy dany uzytkownik
   (`accountId`) juz widzial dany samouczek, wiec kazdy pojawia sie automatycznie tylko raz.
+- **Pole `audience` samouczka** wybiera tylko, ktory natywny panel Forge pokazuje dany samouczek
+  domyslnie (panel na zgloszeniu vs. panel na portalu klienta) — **nie** filtruje tego, co
+  otrzymuje rozszerzenie przegladarki przez synchronizacje: rozszerzenie zawsze dostaje wszystkie
+  samouczki i samo wykrywa, na ktorym ekranie jest uzytkownik, po selektorach CSS w krokach.
 
 ## Ograniczenie architektoniczne (wazne)
 
@@ -77,16 +93,19 @@ a nie klikala za uzytkownika w prawdziwe pola.
 ## Struktura repo
 
 ```
-manifest.yml                     — definicja modulow Forge (panel, admin, "moj postep", web triggery)
-src/tours.js                     — wspolny model danych: lista samouczkow, kazdy ze swoimi krokami
+manifest.yml                     — definicja modulow Forge (panel, portal, admin, "moj postep", web triggery)
+src/tours.js                     — wspolny model danych: lista samouczkow (kazdy z polem audience), kazdy ze swoimi krokami
 src/identity.js                  — wspolna weryfikacja tokenow logowania (Microsoft/Atlassian)
+src/jiraUser.js                  — wspolny helper: pobranie imienia/e-maila uzytkownika Jiry po accountId
 src/resolvers/panel.js           — backend dla jira:issuePanel + jira:personalSettingsPage
+src/resolvers/portal.js          — backend WYLACZNIE dla portalu klienta JSM (osobna funkcja Forge, inna granica zaufania)
 src/resolvers/admin.js           — backend WYLACZNIE dla jira:adminPage (osobna funkcja Forge)
-src/webTrigger.js                — publiczny endpoint HTTP: synchronizacja krokow z rozszerzeniem
+src/webTrigger.js                — publiczny endpoint HTTP: synchronizacja wszystkich samouczkow z rozszerzeniem
 src/atlassianOAuth.js            — wymiana kodu OAuth Atlassian na token (trzyma client_secret)
 src/onboardingReport.js          — endpoint: rozszerzenie zglasza logowanie/postep
-static/onboarding-panel/         — Custom UI: panel z samouczkiem (React + @atlaskit/onboarding)
-static/admin-page/               — Custom UI: edytor tresci krokow + raport zbiorczy (React)
+static/onboarding-panel/         — Custom UI: panel z samouczkiem na zgloszeniu (React + @atlaskit/onboarding)
+static/portal-request-panel/     — Custom UI: analogiczny panel na formularzu portalu klienta JSM
+static/admin-page/               — Custom UI: edytor tresci samouczkow + raport zbiorczy (React)
 static/my-progress/              — Custom UI: wlasny postep pracownika (React)
 ```
 
@@ -111,10 +130,12 @@ Do iteracyjnej pracy nad frontendem mozna uzyc `forge tunnel` zamiast `forge dep
 ## Konfiguracja tresci samouczkow
 
 Po instalacji appki w Jirze: **Ustawienia aplikacji → Ustawienia samouczka onboardingowego**
-(strona admina dodana przez te appke). Tam mozna dodawac/usuwac cale samouczki, a w kazdym z nich
-dodawac, usuwac, zmieniac kolejnosc i edytowac tresc poszczegolnych krokow — zmiany sa widoczne
-natychmiast w panelu na widoku zgloszenia (pierwszy samouczek) i po najblizszej synchronizacji w
-rozszerzeniu przegladarki (wszystkie piec).
+(strona admina dodana przez te appke). Tam mozna dodawac/usuwac cale samouczki, ustawiac ich
+odbiorcow (`employee` / `customer`), a w kazdym z nich dodawac, usuwac, zmieniac kolejnosc i
+edytowac tresc poszczegolnych krokow — zmiany sa widoczne natychmiast w panelu na widoku
+zgloszenia (pierwszy samouczek dla `employee`) i w panelu na portalu klienta (pierwszy samouczek
+dla `customer`), a po najblizszej synchronizacji takze w rozszerzeniu przegladarki (wszystkie
+samouczki, bez wzgledu na odbiorce).
 
 ## Wlasny postep pracownika
 

@@ -17,6 +17,7 @@ const newTour = () => ({
   id: `tour-${Date.now()}-${nextTempId++}`,
   title: '',
   description: '',
+  audience: 'employee',
   steps: [],
 });
 
@@ -84,11 +85,16 @@ function SyncPanel() {
   );
 }
 
-const PROVIDER_LABELS = {
-  jira: 'Jira (panel)',
-  microsoft: 'Microsoft',
-  atlassian: 'Atlassian (rozszerzenie)',
-};
+function sourceLabel(record) {
+  if (record.source === 'jira-panel') return 'Panel w Jirze (pracownik)';
+  if (record.source === 'portal') return 'Portal klienta';
+  if (record.source === 'extension') {
+    return record.provider === 'microsoft'
+      ? 'Rozszerzenie (Microsoft)'
+      : 'Rozszerzenie (Atlassian)';
+  }
+  return record.source || record.provider || '—';
+}
 
 const OUTCOME_LABELS = {
   completed: 'ukonczony',
@@ -120,10 +126,12 @@ function ReportPanel() {
     <SectionMessage title="Kto sie zalogowal i co przeszedl" appearance="information">
       <p>
         Dane pochodza z panelu na widoku zgloszenia (kazdy pracownik Jiry - bez
-        logowania, identyfikowany po koncie Jira) oraz z rozszerzenia przegladarki
-        (tylko jesli wlaczono w nim logowanie Microsoft/Atlassian - patrz sekcja
-        powyzej). To sa dane osobowe (imie, e-mail) - upewnij sie, ze pracownicy
-        wiedza, ze postep w samouczkach jest sledzony.
+        logowania, identyfikowany po koncie Jira), z panelu na portalu klienta JSM
+        (pracownicy bez licencji Jira, ktorzy zgloszaja prosby przez portal) oraz
+        z rozszerzenia przegladarki (tylko jesli wlaczono w nim logowanie
+        Microsoft/Atlassian - patrz sekcja powyzej). To sa dane osobowe (imie,
+        e-mail) - upewnij sie, ze pracownicy wiedza, ze postep w samouczkach jest
+        sledzony.
       </p>
       <div className="report-panel__actions">
         <Button onClick={load}>Odswiez</Button>
@@ -150,7 +158,7 @@ function ReportPanel() {
                     <div>{record.name || '(brak nazwy)'}</div>
                     <div className="report-table__muted">{record.email || record.key}</div>
                   </td>
-                  <td>{PROVIDER_LABELS[record.provider] || record.provider}</td>
+                  <td>{sourceLabel(record)}</td>
                   {tours.map((t) => {
                     const progress = record.tours?.[t.id];
                     if (!progress) {
@@ -247,6 +255,17 @@ function TourEditor({ tour, index, tourCount, onChange, onRemove, onMove }) {
               value={tour.description ?? ''}
               onChange={(e) => updateField('description', e.target.value)}
             />
+          </div>
+          <div className="step-editor__row">
+            <label>Odbiorcy (ktory panel Forge domyslnie pokazuje ten samouczek)</label>
+            <select
+              className="tour-editor__audience-select"
+              value={tour.audience || 'employee'}
+              onChange={(e) => updateField('audience', e.target.value)}
+            >
+              <option value="employee">Pracownicy (panel na zgloszeniu)</option>
+              <option value="customer">Portal klienta (zgloszenie w JSM)</option>
+            </select>
           </div>
 
           <div className="steps-list">

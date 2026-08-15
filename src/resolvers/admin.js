@@ -39,9 +39,11 @@ resolver.define('getSyncInfo', async () => {
 });
 
 // Raport "kto sie zalogowal / jakie kroki przeszedl" - agreguje wpisy z
-// panelu Jiry (report:panel:jira:*, patrz src/resolvers/panel.js) oraz z
-// rozszerzenia przegladarki (report:extension:*, patrz
-// src/onboardingReport.js). Klucze sa enumerowane po prefiksie - patrz
+// panelu Jiry (report:panel:jira:*, patrz src/resolvers/panel.js), z
+// panelu na portalu klienta JSM (report:portal:jira:*, patrz
+// src/resolvers/portal.js) oraz z rozszerzenia przegladarki
+// (report:extension:*, patrz src/onboardingReport.js). Klucze sa
+// enumerowane po prefiksie - patrz
 // @forge/storage query API (storage.query().where('key', startsWith(...))).
 // Kazdy rekord niesie zagniezdzony postep per samouczek (`tours: {tourId:
 // {completedStepIds, tourOutcome, tourCompletedAt}}`) - definicje

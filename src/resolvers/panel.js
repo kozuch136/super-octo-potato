@@ -1,6 +1,7 @@
 import Resolver from '@forge/resolver';
-import { storage, requestJira, route, startsWith } from '@forge/api';
+import { storage, startsWith } from '@forge/api';
 import { getTours, isDangerousObjectKey } from '../tours.js';
+import { fetchUserProfile } from '../jiraUser.js';
 
 // Resolver uzywany WYLACZNIE przez panel na widoku zgloszenia oraz stronie
 // "Moj postep" w ustawieniach osobistych (jira:issuePanel,
@@ -25,19 +26,6 @@ function emptyTourProgress() {
 }
 
 const resolver = new Resolver();
-
-async function fetchUserProfile(accountId) {
-  try {
-    const response = await requestJira(route`/rest/api/3/user?accountId=${accountId}`);
-    if (response.ok) {
-      const user = await response.json();
-      return { name: user.displayName || null, email: user.emailAddress || null };
-    }
-  } catch (err) {
-    // brak profilu nie jest krytyczny - wywolujacy pokaze accountId zamiast nazwy
-  }
-  return { name: null, email: null };
-}
 
 resolver.define('getOnboardingTours', async () => {
   return getTours();

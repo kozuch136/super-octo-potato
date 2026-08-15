@@ -5,9 +5,13 @@ Jiry — czego apka Forge (`../manifest.yml`, `../static/*`) nie moze zrobic, bo
 odizolowanym iframe bez dostepu do DOM strony. Rozszerzenie przegladarki dziala jako content
 script wstrzykniety bezposrednio na strone `*.atlassian.net`, wiec moze podswietlac prawdziwe
 pola na dowolnym ekranie Jiry — nie tylko przy zakladaniu zgloszenia (jak apka Forge), ale tez
-na tablicy, w wyszukiwarce, przy komentowaniu czy zmianie statusu. Domyslnie skonfigurowane jest
-piec przykladowych samouczkow (patrz `background.js` i panel admina appki Forge), kazdy dla
-innego ekranu.
+na tablicy, w wyszukiwarce, przy komentowaniu czy zmianie statusu, a takze na **portalu klienta
+JSM** (ten sam content script dziala na tej samej domenie `*.atlassian.net`). Domyslnie
+skonfigurowane jest szesc przykladowych samouczkow (patrz `background.js` i panel admina appki
+Forge), kazdy dla innego ekranu — piec dla pracownikow z licencja Jira i jeden dla portalu
+klienta (pole `audience: 'customer'` w `src/tours.js`), z ktorego korzystaja m.in. pracownicy bez
+licencji Jira na firmowych komputerach. Rozszerzenie nie rozroznia samouczkow po `audience` —
+zawsze pobiera je wszystkie i samo wykrywa, ktory pasuje do biezacej strony po selektorach.
 
 Manifest V3, przetestowane pod katem Chrome/Chromium (Edge, Brave itd. dzialaja tak samo — silnik
 Chromium). Do Firefoksa wymagalby dodania `browser_specific_settings.gecko.id` oraz fallbacku
@@ -48,9 +52,9 @@ Jiry Cloud. Przykladowe samouczki w `src/tours.js` (katalog glowny repo, skad ro
 je zsynchronizowac) uzywaja przykladowych atrybutow `data-testid`, ktore sa najbardziej odpornym
 dostepnym punktem zaczepienia, ale **moga sie zmienic** przy aktualizacji Jiry i nie sa przeze
 mnie zweryfikowane na zywej instancji (brak dostepu do takiej w tym srodowisku). Przed uzyciem
-produkcyjnym zweryfikuj/ustaw je na nowo narzedziem opisanym nizej — dla kazdego z pieciu
+produkcyjnym zweryfikuj/ustaw je na nowo narzedziem opisanym nizej — dla kazdego z szesciu
 samouczkow osobno, bo dotycza roznych ekranow (tworzenie zgloszenia, tablica, wyszukiwanie,
-komentarze, workflow).
+komentarze, workflow, formularz na portalu klienta).
 
 ### Tryb „Zaznacz element” (zalecany)
 

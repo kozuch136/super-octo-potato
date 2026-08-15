@@ -22,6 +22,13 @@ modules:
         function: panelResolver
       title: Moj postep w onboardingu
 
+  jiraServiceManagement:portalRequestCreatePropertyPanel:
+    - key: onboarding-portal-request-panel
+      resource: portal-request-panel
+      resolver:
+        function: portalResolver
+      title: Jak poprawnie zglosic prosbe
+
   webtrigger:
     - key: onboarding-steps-webtrigger
       function: webTriggerHandler
@@ -35,6 +42,8 @@ modules:
       handler: index.panelHandler
     - key: adminResolver
       handler: index.adminHandler
+    - key: portalResolver
+      handler: index.portalHandler
     - key: webTriggerHandler
       handler: index.webTriggerHandler
     - key: atlassianOAuthExchangeHandler
@@ -49,6 +58,8 @@ resources:
     path: static/admin-page/build
   - key: my-progress
     path: static/my-progress/build
+  - key: portal-request-panel
+    path: static/portal-request-panel/build
 
 app:
   id: ari:cloud:ecosystem::app/00000000-0000-0000-0000-000000000000
