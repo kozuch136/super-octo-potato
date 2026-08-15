@@ -49,6 +49,19 @@ body {
   justify-content: space-between;
 }
 
+.sync-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.sync-panel__field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #172b4d;
+}
+
 .sync-panel__row {
   display: flex;
   gap: 8px;

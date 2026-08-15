@@ -37,12 +37,17 @@ resolver.define('resetOnboardingState', async (req) => {
   return { ok: true };
 });
 
-// URL, pod ktorym rozszerzenie przegladarki moze pobrac aktualne kroki
-// (patrz src/webTrigger.js) - wyswietlany w panelu admina do skopiowania
-// do ustawien rozszerzenia.
+// Adresy, pod ktorymi rozszerzenie przegladarki laczy sie z appka Forge -
+// wyswietlane w panelu admina do skopiowania do ustawien rozszerzenia:
+// `url` do synchronizacji krokow (src/webTrigger.js), `atlassianOAuthExchangeUrl`
+// do logowania Atlassian, jesli admin skonfiguruje logowanie
+// (src/atlassianOAuth.js, patrz browser-extension/auth/README.md).
 resolver.define('getSyncInfo', async () => {
-  const url = await webTrigger.getUrl('onboarding-steps-webtrigger');
-  return { url };
+  const [url, atlassianOAuthExchangeUrl] = await Promise.all([
+    webTrigger.getUrl('onboarding-steps-webtrigger'),
+    webTrigger.getUrl('atlassian-oauth-exchange'),
+  ]);
+  return { url, atlassianOAuthExchangeUrl };
 });
 
 export const handler = resolver.getDefinitions();

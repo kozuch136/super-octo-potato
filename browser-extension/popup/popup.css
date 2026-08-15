@@ -57,3 +57,11 @@ h1 {
 .btn--subtle:hover {
   background: #ebecf0;
 }
+
+#auth-section,
+#tour-section,
+#auth-signed-out {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

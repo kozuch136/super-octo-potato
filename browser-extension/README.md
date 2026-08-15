@@ -78,6 +78,15 @@ instalacja (`ExtensionSettings` + spakowany `.crx`) polaczona z centralnie wdroz
 (`eamneljpkombhcofgdkmgehjnefhodko`) zostalo juz wyliczone i zweryfikowane empirycznie w tym
 repozytorium — szczegoly w `deploy/README.md`.
 
+## Logowanie (opcjonalne) — Microsoft Entra ID / Atlassian
+
+Domyslnie rozszerzenie dziala bez logowania. Mozna to zmienic — patrz
+[`auth/README.md`](auth/README.md) — zeby: (1) samouczek uruchamial sie dopiero po zalogowaniu
+pracownika, oraz (2) synchronizacja z Forge byla zabezpieczona prawdziwym tokenem OAuth zamiast
+polegac wylacznie na tajnosci adresu URL. Dziala to z Microsoft Entra ID (Azure AD) i/lub kontem
+Atlassian, konfigurowane niezaleznie w Ustawieniach rozszerzenia (sekcja „Logowanie”) — mozna
+wlaczyc jeden dostawca, oba, lub zaden.
+
 ## Domena Jiry inna niz *.atlassian.net
 
 `manifest.json` (`host_permissions` i `content_scripts.matches`) jest ograniczony do

@@ -41,6 +41,41 @@
         <p id="sync-info" class="hint"></p>
       </section>
 
+      <section class="sync-section">
+        <h2>Logowanie (opcjonalne)</h2>
+        <p class="lead">
+          Jesli chcesz, zeby samouczek dzialal tylko po zalogowaniu sie pracownika (Microsoft
+          Entra ID lub Atlassian), skonfiguruj tu dane aplikacji OAuth. Zostawienie tych pol
+          pustymi oznacza, ze logowanie nie jest wymagane — tak dziala rozszerzenie domyslnie.
+          Szczegoly rejestracji aplikacji: <code>auth/README.md</code>.
+        </p>
+
+        <div class="field">
+          <label>Microsoft Entra ID — Application (client) ID</label>
+          <input id="ms-client-id" type="text" placeholder="np. 11111111-2222-3333-4444-555555555555" />
+        </div>
+        <div class="field">
+          <label>Microsoft Entra ID — Directory (tenant) ID</label>
+          <input id="ms-tenant-id" type="text" placeholder="np. 66666666-7777-8888-9999-000000000000" />
+        </div>
+        <div class="field">
+          <label>Atlassian OAuth — Client ID</label>
+          <input id="atlassian-client-id" type="text" placeholder="Client ID z developer.atlassian.com" />
+        </div>
+        <div class="field">
+          <label>Atlassian OAuth — adres wymiany tokenu (Forge web trigger)</label>
+          <input
+            id="atlassian-exchange-url"
+            type="text"
+            placeholder="https://....hello.atlassian-dev.net/x1/...."
+          />
+        </div>
+        <div class="row">
+          <button id="auth-save" class="btn btn--primary">Zapisz konfiguracje logowania</button>
+        </div>
+        <p id="auth-config-status" class="hint"></p>
+      </section>
+
       <div id="status" class="notice" hidden></div>
 
       <div id="steps" class="steps"></div>

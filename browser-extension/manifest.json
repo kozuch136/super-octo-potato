@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Jira Onboarding Guide",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Interaktywny samouczek, ktory krok po kroku pokazuje nowym pracownikom, jak poprawnie uzupelnic zgloszenie w Jirze zgodnie z procedura firmy.",
-  "permissions": ["storage", "alarms"],
-  "host_permissions": ["*://*.atlassian.net/*"],
+  "permissions": ["storage", "alarms", "identity"],
+  "host_permissions": ["*://*.atlassian.net/*", "https://login.microsoftonline.com/*"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
     "default_popup": "popup/popup.html",

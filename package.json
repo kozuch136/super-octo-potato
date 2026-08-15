@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@forge/api": "^4.0.0",
-    "@forge/resolver": "^1.6.0"
+    "@forge/resolver": "^1.6.0",
+    "jose": "^5.9.6"
   }
 }

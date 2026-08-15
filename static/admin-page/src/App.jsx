@@ -14,15 +14,8 @@ const newStep = () => ({
   description: '',
 });
 
-function SyncPanel() {
-  const [url, setUrl] = useState(null);
+function CopyableUrl({ label, url }) {
   const [copyStatus, setCopyStatus] = useState(null);
-
-  useEffect(() => {
-    invoke('getSyncInfo')
-      .then((info) => setUrl(info.url))
-      .catch(() => setUrl(null));
-  }, []);
 
   const copy = async () => {
     try {
@@ -34,22 +27,47 @@ function SyncPanel() {
   };
 
   return (
+    <div className="sync-panel__field">
+      <label>{label}</label>
+      <div className="sync-panel__row">
+        <Textfield value={url ?? 'Wczytywanie...'} isReadOnly isDisabled={!url} />
+        <Button onClick={copy} isDisabled={!url}>
+          Kopiuj
+        </Button>
+      </div>
+      {copyStatus && <p className="sync-panel__status">{copyStatus}</p>}
+    </div>
+  );
+}
+
+function SyncPanel() {
+  const [info, setInfo] = useState(null);
+
+  useEffect(() => {
+    invoke('getSyncInfo')
+      .then(setInfo)
+      .catch(() => setInfo(null));
+  }, []);
+
+  return (
     <SectionMessage title="Synchronizacja z rozszerzeniem przegladarki" appearance="discovery">
       <p>
-        Wklej ponizszy adres w Ustawieniach rozszerzenia przegladarki
+        Wklej pierwszy adres w Ustawieniach rozszerzenia przegladarki
         (sekcja „Synchronizacja z aplikacja Forge”), aby rozszerzenie
         automatycznie pobieralo te same kroki, ktore konfigurujesz tutaj -
         bez recznego przepisywania tresci w dwoch miejscach.
       </p>
-      {url ? (
-        <div className="sync-panel__row">
-          <Textfield value={url} isReadOnly />
-          <Button onClick={copy}>Kopiuj</Button>
-        </div>
-      ) : (
-        <p>Wczytywanie adresu...</p>
-      )}
-      {copyStatus && <p className="sync-panel__status">{copyStatus}</p>}
+      <CopyableUrl label="Adres synchronizacji krokow" url={info?.url} />
+      <p>
+        Drugi adres jest potrzebny tylko, jesli w rozszerzeniu wlaczysz
+        opcjonalne logowanie przez Atlassian (sekcja „Logowanie” w
+        Ustawieniach rozszerzenia) - patrz{' '}
+        <code>browser-extension/auth/README.md</code>.
+      </p>
+      <CopyableUrl
+        label="Adres wymiany tokenu logowania Atlassian"
+        url={info?.atlassianOAuthExchangeUrl}
+      />
     </SectionMessage>
   );
 }

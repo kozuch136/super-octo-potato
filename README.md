@@ -27,6 +27,11 @@ instalacji rozszerzenia (`browser-extension/deploy/`) daje pelnie bezobslugowe w
 Forge jest jedynym miejscem, w ktorym ktokolwiek recznie edytuje tresc samouczka; pracownik
 dostaje dzialajace rozszerzenie i samouczek bez klikania czegokolwiek.
 
+**Opcjonalne logowanie (Microsoft / Atlassian):** rozszerzenie moze tez wymagac zalogowania sie
+przed uruchomieniem samouczka i uzywac tokenu z tego logowania do zabezpieczenia synchronizacji z
+Forge (zamiast polegac tylko na tajnosci adresu URL) — patrz
+[`browser-extension/auth/README.md`](browser-extension/auth/README.md).
+
 ## Forge app (glowny katalog)
 
 Natywna aplikacja [Atlassian Forge](https://developer.atlassian.com/platform/forge/), ktora

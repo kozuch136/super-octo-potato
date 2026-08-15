@@ -18,12 +18,16 @@ modules:
   webtrigger:
     - key: onboarding-steps-webtrigger
       function: webTriggerHandler
+    - key: atlassian-oauth-exchange
+      function: atlassianOAuthExchangeHandler
 
   function:
     - key: resolver
       handler: index.handler
     - key: webTriggerHandler
       handler: index.webTriggerHandler
+    - key: atlassianOAuthExchangeHandler
+      handler: index.atlassianOAuthExchangeHandler
 
 resources:
   - key: onboarding-panel
@@ -39,6 +43,12 @@ app:
 permissions:
   scopes:
     - storage:app
+  external:
+    fetch:
+      backend:
+        - auth.atlassian.com
+        - api.atlassian.com
+        - login.microsoftonline.com
   content:
     styles:
       - unsafe-inline

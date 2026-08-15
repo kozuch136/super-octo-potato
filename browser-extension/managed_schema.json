@@ -5,6 +5,22 @@
       "type": "string",
       "title": "Adres Forge web trigger (Jira -> Ustawienia samouczka onboardingowego), z ktorego rozszerzenie ma pobierac kroki. Wyklucza sie ze statycznym polem steps ponizej."
     },
+    "msClientId": {
+      "type": "string",
+      "title": "Application (client) ID aplikacji Microsoft Entra ID zarejestrowanej dla tego rozszerzenia"
+    },
+    "msTenantId": {
+      "type": "string",
+      "title": "Directory (tenant) ID organizacji w Microsoft Entra ID"
+    },
+    "atlassianClientId": {
+      "type": "string",
+      "title": "Client ID aplikacji OAuth 2.0 (3LO) zarejestrowanej w developer.atlassian.com"
+    },
+    "atlassianExchangeUrl": {
+      "type": "string",
+      "title": "Adres web triggera appki Forge, ktory wymienia kod OAuth Atlassian na token (src/atlassianOAuth.js)"
+    },
     "steps": {
       "type": "array",
       "title": "Kroki samouczka onboardingowego wdrazane centralnie przez IT (Chrome Enterprise policy)",

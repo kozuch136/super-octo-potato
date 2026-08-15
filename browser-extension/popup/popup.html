@@ -8,10 +8,23 @@
   <body>
     <div class="popup">
       <h1>Samouczek Jira</h1>
-      <p id="status" class="status">Sprawdzanie statusu...</p>
-      <button id="start" class="btn btn--primary">Uruchom ponownie samouczek</button>
-      <button id="options" class="btn btn--subtle">Ustawienia kroków</button>
-      <p id="hint" class="hint"></p>
+
+      <div id="auth-section" hidden>
+        <p id="auth-status" class="status"></p>
+        <div id="auth-signed-out">
+          <button id="signin-microsoft" class="btn btn--primary">Zaloguj przez Microsoft</button>
+          <button id="signin-atlassian" class="btn btn--primary">Zaloguj przez Atlassian</button>
+        </div>
+        <button id="signout" class="btn btn--subtle" hidden>Wyloguj</button>
+        <p id="auth-error" class="hint"></p>
+      </div>
+
+      <div id="tour-section">
+        <p id="status" class="status">Sprawdzanie statusu...</p>
+        <button id="start" class="btn btn--primary">Uruchom ponownie samouczek</button>
+        <button id="options" class="btn btn--subtle">Ustawienia kroków</button>
+        <p id="hint" class="hint"></p>
+      </div>
     </div>
     <script src="popup.js"></script>
   </body>

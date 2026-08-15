@@ -31,6 +31,15 @@
     return Boolean(tourSeen);
   }
 
+  async function getAuthGate() {
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'JOC_GET_AUTH_STATE' });
+      return response || { auth: null, authRequired: false };
+    } catch (err) {
+      return { auth: null, authRequired: false };
+    }
+  }
+
   async function markSeen() {
     await chrome.storage.local.set({ tourSeen: true });
   }
@@ -196,6 +205,11 @@
   }
 
   async function startTour() {
+    const { auth, authRequired } = await getAuthGate();
+    if (authRequired && !auth) {
+      showLauncher({ locked: true });
+      return;
+    }
     steps = await loadSteps();
     if (!steps.length) {
       return;
@@ -203,17 +217,25 @@
     goToStep(0);
   }
 
-  function showLauncher() {
+  function showLauncher({ locked = false } = {}) {
     if (launcherEl) {
-      launcherEl.style.display = '';
-      return;
+      launcherEl.remove();
+      launcherEl = null;
     }
     launcherEl = document.createElement('button');
     launcherEl.className = 'joc-launcher';
     launcherEl.type = 'button';
-    launcherEl.textContent = '?';
-    launcherEl.title = 'Uruchom samouczek onboardingowy';
-    launcherEl.onclick = () => startTour();
+    if (locked) {
+      launcherEl.textContent = '\u{1F512}';
+      launcherEl.title = 'Zaloguj sie, aby uruchomic samouczek onboardingowy';
+      launcherEl.onclick = () => {
+        chrome.runtime.sendMessage({ type: 'JOC_OPEN_PAGE', page: 'popup/popup.html' });
+      };
+    } else {
+      launcherEl.textContent = '?';
+      launcherEl.title = 'Uruchom samouczek onboardingowy';
+      launcherEl.onclick = () => startTour();
+    }
     document.body.appendChild(launcherEl);
   }
 
@@ -331,6 +353,11 @@
   // --- Autostart przy pierwszej wizycie ---
 
   (async function init() {
+    const { auth, authRequired } = await getAuthGate();
+    if (authRequired && !auth) {
+      showLauncher({ locked: true });
+      return;
+    }
     showLauncher();
     const seen = await isSeen();
     if (seen) {

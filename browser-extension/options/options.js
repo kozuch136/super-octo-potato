@@ -7,6 +7,15 @@ const syncInfoEl = document.getElementById('sync-info');
 const syncSaveBtn = document.getElementById('sync-save');
 const syncNowBtn = document.getElementById('sync-now');
 
+const msClientIdInput = document.getElementById('ms-client-id');
+const msTenantIdInput = document.getElementById('ms-tenant-id');
+const atlassianClientIdInput = document.getElementById('atlassian-client-id');
+const atlassianExchangeUrlInput = document.getElementById('atlassian-exchange-url');
+const authSaveBtn = document.getElementById('auth-save');
+const authConfigStatusEl = document.getElementById('auth-config-status');
+
+const AUTH_CONFIG_KEYS = ['msClientId', 'msTenantId', 'atlassianClientId', 'atlassianExchangeUrl'];
+
 let managed = false;
 let pickingRow = null;
 
@@ -148,8 +157,44 @@ syncNowBtn.addEventListener('click', async () => {
   await requestSync(url);
 });
 
+async function loadAuthConfigSection() {
+  const managedResult = await chrome.storage.managed.get(AUTH_CONFIG_KEYS).catch(() => ({}));
+  const local = await chrome.storage.local.get(AUTH_CONFIG_KEYS);
+  const isManaged = AUTH_CONFIG_KEYS.some((key) => managedResult[key]);
+
+  const values = {};
+  for (const key of AUTH_CONFIG_KEYS) {
+    values[key] = managedResult[key] || local[key] || '';
+  }
+
+  msClientIdInput.value = values.msClientId;
+  msTenantIdInput.value = values.msTenantId;
+  atlassianClientIdInput.value = values.atlassianClientId;
+  atlassianExchangeUrlInput.value = values.atlassianExchangeUrl;
+
+  if (isManaged) {
+    [msClientIdInput, msTenantIdInput, atlassianClientIdInput, atlassianExchangeUrlInput, authSaveBtn].forEach(
+      (el) => {
+        el.disabled = true;
+      }
+    );
+    authConfigStatusEl.textContent = 'Konfiguracja logowania wdrozona centralnie przez IT.';
+  }
+}
+
+authSaveBtn.addEventListener('click', async () => {
+  await chrome.storage.local.set({
+    msClientId: msClientIdInput.value.trim() || undefined,
+    msTenantId: msTenantIdInput.value.trim() || undefined,
+    atlassianClientId: atlassianClientIdInput.value.trim() || undefined,
+    atlassianExchangeUrl: atlassianExchangeUrlInput.value.trim() || undefined,
+  });
+  authConfigStatusEl.textContent = 'Zapisano konfiguracje logowania.';
+});
+
 async function load() {
   await loadSyncSection();
+  await loadAuthConfigSection();
 
   const managedResult = await chrome.storage.managed.get('steps').catch(() => ({}));
   if (managedResult && Array.isArray(managedResult.steps) && managedResult.steps.length) {
