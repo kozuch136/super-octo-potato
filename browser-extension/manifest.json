@@ -3,7 +3,7 @@
   "name": "Jira Onboarding Guide",
   "version": "0.1.0",
   "description": "Interaktywny samouczek, ktory krok po kroku pokazuje nowym pracownikom, jak poprawnie uzupelnic zgloszenie w Jirze zgodnie z procedura firmy.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "alarms"],
   "host_permissions": ["*://*.atlassian.net/*"],
   "background": {
     "service_worker": "background.js"

@@ -16,6 +16,12 @@ formularza:
 Ponizej opisana jest wersja Forge. Wersja rozszerzenia ma wlasny opis w
 [`browser-extension/README.md`](browser-extension/README.md).
 
+**Jedna konfiguracja dla obu:** appka Forge udostepnia kroki tez jako publiczny endpoint
+(web trigger). Rozszerzenie przegladarki moze sie z niego automatycznie synchronizowac, wiec
+tresc samouczka wystarczy skonfigurowac raz — w panelu admina Jiry. Zobacz sekcje
+[„Jedno zrodlo prawdy: synchronizacja Forge → rozszerzenie”](#jedno-zrodlo-prawdy-synchronizacja-forge--rozszerzenie)
+nizej.
+
 ## Forge app (glowny katalog)
 
 Natywna aplikacja [Atlassian Forge](https://developer.atlassian.com/platform/forge/), ktora
@@ -47,10 +53,12 @@ a nie klikala za uzytkownika w prawdziwe pola.
 ## Struktura repo
 
 ```
-manifest.yml                     — definicja modulow Forge (panel + strona admina)
+manifest.yml                     — definicja modulow Forge (panel + strona admina + web trigger)
+src/steps.js                     — wspolny model danych krokow (uzywany przez resolver i web trigger)
 src/resolvers/index.js           — backend: CRUD na krokach + stan "widziano" per uzytkownik
+src/webTrigger.js                — publiczny endpoint HTTP odczytywany przez rozszerzenie przegladarki
 static/onboarding-panel/         — Custom UI: panel z samouczkiem (React + @atlaskit/onboarding)
-static/admin-page/               — Custom UI: edytor tresci krokow (React)
+static/admin-page/               — Custom UI: edytor tresci krokow + panel synchronizacji (React)
 ```
 
 ## Uruchomienie lokalne / wdrozenie
@@ -77,3 +85,41 @@ Po instalacji appki w Jirze: **Ustawienia aplikacji → Ustawienia samouczka onb
 (strona globalna dodana przez te appke). Tam mozna dodawac, usuwac, zmieniac kolejnosc i edytowac
 tresc poszczegolnych krokow — zmiany sa widoczne natychmiast we wszystkich panelach na widokach
 zgloszen.
+
+## Jedno zrodlo prawdy: synchronizacja Forge → rozszerzenie
+
+Zamiast konfigurowac te same kroki osobno w appce Forge i osobno w rozszerzeniu przegladarki,
+mozna skonfigurowac je **raz**, w panelu admina Jiry, i podpiac rozszerzenie pod ten sam zestaw:
+
+1. Wdroz appke (`forge deploy` + `forge install`) — dopiero po instalacji Forge generuje adres
+   web triggera.
+2. W Jirze otworz **Ustawienia aplikacji → Ustawienia samouczka onboardingowego**. Na gorze
+   strony jest sekcja „Synchronizacja z rozszerzeniem przegladarki” z gotowym adresem URL i
+   przyciskiem „Kopiuj”.
+3. W kazdym stepie dodaj tez **Selektor CSS** (pole widoczne pod naglowkiem „Identyfikator
+   pola”) — to jedyna czesc konfiguracji, ktorej uzywa wylacznie rozszerzenie (wskazuje
+   prawdziwe pole na stronie Jiry do podswietlenia). Panel Forge to pole ignoruje.
+4. Wklej skopiowany adres w rozszerzeniu: **Ustawienia rozszerzenia → Synchronizacja z aplikacja
+   Forge → wklej adres → „Zapisz adres” → „Synchronizuj teraz”**.
+5. Od tej pory rozszerzenie samo odswieza kroki w tle co ~6h (`chrome.alarms`), a kazda zmiana
+   zapisana w panelu Forge trafia do rozszerzenia po najblizszej synchronizacji (albo od razu po
+   recznym kliknieciu „Synchronizuj teraz”).
+
+**Dystrybucja w calej organizacji bez konfiguracji per uzytkownik:** jesli IT wdraza rozszerzenie
+centralnie przez Chrome Enterprise policy, wystarczy w polityce ustawic `syncUrl` na ten sam adres
+web triggera (schemat: `browser-extension/managed_schema.json`) — kazda instalacja rozszerzenia
+zsynchronizuje sie automatycznie przy starcie, bez koniecznosci klikania czegokolwiek przez
+pracownikow.
+
+**Opcjonalne zabezpieczenie endpointu:** domyslnie adres web triggera jest publiczny (chroniony
+tylko dlugoscia/losowoscia URL-a wygenerowanego przez Forge) i udostepnia wylacznie tresc
+samouczka (nazwy pol, podpowiedzi tekstowe) — nic wrazliwego. Jesli to za malo, ustaw
+`forge variables set --encrypt SYNC_TOKEN <sekret>` — wtedy endpoint zacznie wymagac parametru
+`?token=<sekret>` (dopisz go recznie do adresu wklejanego w rozszerzeniu).
+
+**Nieprzetestowane w tym srodowisku:** web trigger nie zostal wywolany na zywo (brak konta
+Atlassian w tym srodowisku), wiec dokladny format wygenerowanego adresu (domena
+`*.atlassian-dev.net` czy inna, w zaleznosci od regionu/trybu wdrozenia) nie zostal zweryfikowany
+empirycznie — kod jest zgodny z udokumentowanym API Forge (`webTrigger.getUrl`,
+ksztalt request/response handlera), ale przed poleganiem na tym w produkcji przetestuj cala
+sciezke raz recznie.

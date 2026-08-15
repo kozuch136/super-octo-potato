@@ -1,51 +1,88 @@
-const DEFAULT_STEPS = [
-  {
-    id: 'summary',
-    selector: '[data-testid*="summary"] input, #summary',
-    heading: 'Tytul zgloszenia',
-    description:
-      'Napisz zwiezly, konkretny tytul - unikaj ogolnikow typu "Problem z systemem".',
-  },
-  {
-    id: 'priority',
-    selector: '[data-testid*="priority-field"], #priority-field',
-    heading: 'Priorytet',
-    description:
-      'Ustaw priorytet zgodnie z SLA: "Highest" tylko dla awarii produkcyjnych.',
-  },
-  {
-    id: 'component',
-    selector: '[data-testid*="components-field"], #components-field',
-    heading: 'Komponent',
-    description:
-      'Wskaz komponent/modul, ktorego dotyczy zgloszenie - to kieruje ticket do wlasciwego zespolu.',
-  },
-  {
-    id: 'description',
-    selector: '[data-testid*="description"] .ProseMirror, #description',
-    heading: 'Opis',
-    description:
-      'Skorzystaj z szablonu: Kroki reprodukcji, Oczekiwany rezultat, Rzeczywisty rezultat.',
-  },
-  {
-    id: 'assignee',
-    selector: '[data-testid*="assignee-field"], #assignee-field',
-    heading: 'Przypisanie',
-    description:
-      'Nie przypisuj ticketu recznie - zostaw puste, zespol sam podejmie go z kolejki.',
-  },
-];
+const ALARM_NAME = 'joc-sync';
+const SYNC_PERIOD_MINUTES = 360; // co 6h
 
-// Selektory powyzej sa PRZYKLADEM opartym o typowe atrybuty data-testid
-// Jiry Cloud. Atlassian nie gwarantuje stabilnosci tych atrybutow miedzy
-// wydaniami, wiec przed produkcyjnym uzyciem zweryfikuj/ustaw je na nowo
-// narzedziem "Zaznacz element" w Ustawieniach.
+async function getSyncUrl() {
+  let managed = {};
+  try {
+    managed = await chrome.storage.managed.get('syncUrl');
+  } catch (err) {
+    managed = {};
+  }
+  if (managed && managed.syncUrl) {
+    return managed.syncUrl;
+  }
+  const local = await chrome.storage.local.get('syncUrl');
+  return local.syncUrl || null;
+}
+
+// Pobiera kroki z web triggera aplikacji Forge (patrz manifest.yml ->
+// modules.webtrigger oraz src/webTrigger.js w katalogu glownym repo) i
+// zapisuje je jako lokalny cache, z ktorego korzysta content script.
+async function syncFromForge(explicitUrl) {
+  const url = explicitUrl || (await getSyncUrl());
+  if (!url) {
+    return { ok: false, error: 'Brak skonfigurowanego adresu synchronizacji.' };
+  }
+  try {
+    const response = await fetch(url, { method: 'GET' });
+    if (!response.ok) {
+      return { ok: false, error: `Serwer zwrocil status ${response.status}.` };
+    }
+    const data = await response.json();
+    if (!Array.isArray(data.steps)) {
+      return { ok: false, error: 'Nieoczekiwana odpowiedz serwera (brak "steps").' };
+    }
+    await chrome.storage.local.set({ steps: data.steps, lastSyncAt: Date.now() });
+    return { ok: true, steps: data.steps };
+  } catch (err) {
+    return { ok: false, error: err.message || 'Blad sieci.' };
+  }
+}
+
+async function maybeAutoSync() {
+  const url = await getSyncUrl();
+  if (!url) return;
+  const { steps } = await chrome.storage.local.get('steps');
+  if (!steps || steps.length === 0) {
+    await syncFromForge(url);
+  }
+}
+
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
-  if (reason !== 'install') {
-    return;
+  if (reason === 'install') {
+    const existing = await chrome.storage.local.get('steps');
+    if (existing.steps === undefined) {
+      await chrome.storage.local.set({ steps: [] });
+    }
   }
-  const existing = await chrome.storage.local.get('steps');
-  if (!existing.steps) {
-    await chrome.storage.local.set({ steps: DEFAULT_STEPS });
+  chrome.alarms.create(ALARM_NAME, { periodInMinutes: SYNC_PERIOD_MINUTES });
+  await maybeAutoSync();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  chrome.alarms.create(ALARM_NAME, { periodInMinutes: SYNC_PERIOD_MINUTES });
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === ALARM_NAME) {
+    syncFromForge().catch((err) =>
+      console.warn('[Jira Onboarding Guide] Synchronizacja w tle nie powiodla sie', err)
+    );
   }
+});
+
+// Gdy IT wdrozy/zmieni centralnie syncUrl przez Chrome Enterprise policy,
+// zsynchronizuj od razu zamiast czekac na najblizszy alarm.
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'managed' && changes.syncUrl) {
+    syncFromForge(changes.syncUrl.newValue).catch(() => {});
+  }
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'JOC_SYNC_NOW') {
+    syncFromForge(message.url).then(sendResponse);
+    return true;
+  }
+  return undefined;
 });

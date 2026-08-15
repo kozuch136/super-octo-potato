@@ -1,6 +1,10 @@
 {
   "type": "object",
   "properties": {
+    "syncUrl": {
+      "type": "string",
+      "title": "Adres Forge web trigger (Jira -> Ustawienia samouczka onboardingowego), z ktorego rozszerzenie ma pobierac kroki. Wyklucza sie ze statycznym polem steps ponizej."
+    },
     "steps": {
       "type": "array",
       "title": "Kroki samouczka onboardingowego wdrazane centralnie przez IT (Chrome Enterprise policy)",

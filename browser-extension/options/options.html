@@ -20,6 +20,27 @@
         Kroki sa obecnie wdrozone centralnie przez administratora IT (Chrome Enterprise
         policy) i nie mozna ich edytowac lokalnie.
       </div>
+
+      <section class="sync-section">
+        <h2>Synchronizacja z aplikacja Forge</h2>
+        <p class="lead">
+          Zamiast konfigurowac kroki osobno tutaj, mozesz pobierac je automatycznie z
+          appki Forge w Jirze — jednego, wspolnego zrodla tresci. Adres znajdziesz w
+          Jirze w: <strong>Ustawienia aplikacji → Ustawienia samouczka onboardingowego</strong>
+          (sekcja „Synchronizacja z rozszerzeniem przegladarki”, przycisk „Kopiuj”).
+        </p>
+        <div class="row">
+          <input
+            id="sync-url"
+            type="text"
+            placeholder="https://....hello.atlassian-dev.net/x1/...."
+          />
+          <button id="sync-save" class="btn btn--subtle">Zapisz adres</button>
+          <button id="sync-now" class="btn btn--primary">Synchronizuj teraz</button>
+        </div>
+        <p id="sync-info" class="hint"></p>
+      </section>
+
       <div id="status" class="notice" hidden></div>
 
       <div id="steps" class="steps"></div>

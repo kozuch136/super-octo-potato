@@ -2,6 +2,10 @@ const stepsContainer = document.getElementById('steps');
 const template = document.getElementById('step-template');
 const statusEl = document.getElementById('status');
 const managedNoticeEl = document.getElementById('managed-notice');
+const syncUrlInput = document.getElementById('sync-url');
+const syncInfoEl = document.getElementById('sync-info');
+const syncSaveBtn = document.getElementById('sync-save');
+const syncNowBtn = document.getElementById('sync-now');
 
 let managed = false;
 let pickingRow = null;
@@ -10,6 +14,17 @@ function showStatus(message, kind) {
   statusEl.hidden = false;
   statusEl.textContent = message;
   statusEl.className = `notice notice--${kind}`;
+}
+
+function formatSyncInfo(lastSyncAt, extra) {
+  const parts = [];
+  if (lastSyncAt) {
+    parts.push(`Ostatnia synchronizacja: ${new Date(lastSyncAt).toLocaleString('pl-PL')}.`);
+  }
+  if (extra) {
+    parts.push(extra);
+  }
+  syncInfoEl.textContent = parts.join(' ');
 }
 
 function rowFromStep(step) {
@@ -83,7 +98,59 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
+async function loadSyncSection() {
+  const managedResult = await chrome.storage.managed.get('syncUrl').catch(() => ({}));
+  const local = await chrome.storage.local.get(['syncUrl', 'lastSyncAt']);
+
+  if (managedResult && managedResult.syncUrl) {
+    syncUrlInput.value = managedResult.syncUrl;
+    syncUrlInput.disabled = true;
+    syncSaveBtn.disabled = true;
+    formatSyncInfo(local.lastSyncAt, 'Adres wdrozony centralnie przez IT.');
+    return;
+  }
+
+  syncUrlInput.value = local.syncUrl || '';
+  formatSyncInfo(local.lastSyncAt);
+}
+
+async function requestSync(url) {
+  syncNowBtn.disabled = true;
+  formatSyncInfo(null, 'Synchronizowanie...');
+  try {
+    const result = await chrome.runtime.sendMessage({ type: 'JOC_SYNC_NOW', url });
+    if (result && result.ok) {
+      if (!managed) {
+        renderSteps(result.steps);
+      }
+      const { lastSyncAt } = await chrome.storage.local.get('lastSyncAt');
+      formatSyncInfo(lastSyncAt, 'Zsynchronizowano pomyslnie.');
+    } else {
+      formatSyncInfo(null, `Synchronizacja nie powiodla sie: ${result?.error || 'nieznany blad'}.`);
+    }
+  } finally {
+    syncNowBtn.disabled = false;
+  }
+}
+
+syncSaveBtn.addEventListener('click', async () => {
+  const url = syncUrlInput.value.trim();
+  await chrome.storage.local.set({ syncUrl: url || undefined });
+  showStatus('Zapisano adres synchronizacji.', 'success');
+});
+
+syncNowBtn.addEventListener('click', async () => {
+  const url = syncUrlInput.value.trim();
+  if (!url) {
+    formatSyncInfo(null, 'Podaj najpierw adres synchronizacji.');
+    return;
+  }
+  await requestSync(url);
+});
+
 async function load() {
+  await loadSyncSection();
+
   const managedResult = await chrome.storage.managed.get('steps').catch(() => ({}));
   if (managedResult && Array.isArray(managedResult.steps) && managedResult.steps.length) {
     managed = true;

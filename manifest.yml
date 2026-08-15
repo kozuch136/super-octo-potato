@@ -15,9 +15,15 @@ modules:
       title: Ustawienia samouczka onboardingowego
       icon: https://developer.atlassian.com/platform/forge/images/icons/global-page-icon.svg
 
+  webtrigger:
+    - key: onboarding-steps-webtrigger
+      function: webTriggerHandler
+
   function:
     - key: resolver
       handler: index.handler
+    - key: webTriggerHandler
+      handler: index.webTriggerHandler
 
 resources:
   - key: onboarding-panel

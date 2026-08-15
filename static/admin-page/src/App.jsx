@@ -9,9 +9,50 @@ import './App.css';
 let nextTempId = 0;
 const newStep = () => ({
   id: `step-${Date.now()}-${nextTempId++}`,
+  selector: '',
   heading: '',
   description: '',
 });
+
+function SyncPanel() {
+  const [url, setUrl] = useState(null);
+  const [copyStatus, setCopyStatus] = useState(null);
+
+  useEffect(() => {
+    invoke('getSyncInfo')
+      .then((info) => setUrl(info.url))
+      .catch(() => setUrl(null));
+  }, []);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopyStatus('Skopiowano.');
+    } catch (err) {
+      setCopyStatus('Nie udalo sie skopiowac - zaznacz i skopiuj recznie.');
+    }
+  };
+
+  return (
+    <SectionMessage title="Synchronizacja z rozszerzeniem przegladarki" appearance="discovery">
+      <p>
+        Wklej ponizszy adres w Ustawieniach rozszerzenia przegladarki
+        (sekcja „Synchronizacja z aplikacja Forge”), aby rozszerzenie
+        automatycznie pobieralo te same kroki, ktore konfigurujesz tutaj -
+        bez recznego przepisywania tresci w dwoch miejscach.
+      </p>
+      {url ? (
+        <div className="sync-panel__row">
+          <Textfield value={url} isReadOnly />
+          <Button onClick={copy}>Kopiuj</Button>
+        </div>
+      ) : (
+        <p>Wczytywanie adresu...</p>
+      )}
+      {copyStatus && <p className="sync-panel__status">{copyStatus}</p>}
+    </SectionMessage>
+  );
+}
 
 export default function App() {
   const [steps, setSteps] = useState([]);
@@ -75,8 +116,13 @@ export default function App() {
           Zdefiniuj kroki, ktore nowi pracownicy zobacza w panelu na widoku
           zgloszenia przy pierwszym logowaniu. Kazdy krok odpowiada polu
           ticketu i powinien opisywac procedure obowiazujaca w Twojej firmie.
+          Pole „Selektor CSS” jest uzywane wylacznie przez rozszerzenie
+          przegladarki (patrz sekcja synchronizacji nizej) - panel w Jirze go
+          ignoruje.
         </p>
       </SectionMessage>
+
+      <SyncPanel />
 
       {status && (
         <SectionMessage appearance={status.type === 'success' ? 'success' : 'error'}>
@@ -92,6 +138,14 @@ export default function App() {
               <Textfield
                 value={step.id}
                 onChange={(e) => updateStep(index, 'id', e.target.value)}
+              />
+            </div>
+            <div className="step-editor__row">
+              <label>Selektor CSS (dla rozszerzenia przegladarki)</label>
+              <Textfield
+                value={step.selector ?? ''}
+                placeholder='np. [data-testid*="priority-field"]'
+                onChange={(e) => updateStep(index, 'selector', e.target.value)}
               />
             </div>
             <div className="step-editor__row">

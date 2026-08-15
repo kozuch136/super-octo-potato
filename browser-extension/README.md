@@ -23,10 +23,18 @@ pole pasujace do pierwszego skonfigurowanego kroku. W kazdej chwili mozna go tez
 recznie — klikajac ikone rozszerzenia (przycisk „Uruchom ponownie samouczek”) albo pluszowy
 przycisk „?” w prawym dolnym rogu strony.
 
-## Konfiguracja krokow — selektory CSS
+## Konfiguracja krokow — dwie opcje
 
-Kazdy krok to `{ id, selector, heading, description }`. `selector` to zwykly selektor CSS
-wskazujacy pole na stronie Jiry, ktore ma zostac podswietlone.
+**Opcja A (zalecana): synchronizacja z appka Forge.** Jesli w tym samym repo masz wdrozona appke
+Forge (glowny katalog), skonfiguruj kroki raz w Jirze (**Ustawienia aplikacji → Ustawienia
+samouczka onboardingowego**) i podepnij pod nia rozszerzenie: **Ustawienia rozszerzenia →
+Synchronizacja z aplikacja Forge → wklej adres z panelu Forge → „Zapisz adres” → „Synchronizuj
+teraz”**. Od tej pory oba miejsca pokazuja te sama tresc, a rozszerzenie odswieza ja samo co ~6h.
+Pelny opis w [`../README.md#jedno-zrodlo-prawdy-synchronizacja-forge--rozszerzenie`](../README.md#jedno-zrodlo-prawdy-synchronizacja-forge--rozszerzenie).
+
+**Opcja B: konfiguracja lokalna.** Bez appki Forge mozna edytowac kroki bezposrednio w
+Ustawieniach rozszerzenia. Kazdy krok to `{ id, selector, heading, description }`. `selector` to
+zwykly selektor CSS wskazujacy pole na stronie Jiry, ktore ma zostac podswietlone.
 
 **Wazne zastrzezenie:** Atlassian nie publikuje ani nie gwarantuje stabilnego, publicznego DOM
 Jiry Cloud. Domyslne kroki w `background.js` uzywaja przykladowych atrybutow `data-testid`,
