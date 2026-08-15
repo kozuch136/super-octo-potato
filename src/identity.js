@@ -1,8 +1,8 @@
 import { fetch } from '@forge/api';
-import { jwtVerify, createRemoteJWKSet } from 'jose';
+import { jwtVerify, createRemoteJWKSet, SignJWT } from 'jose';
 
 // Wspolna logika weryfikacji tokenu logowania (Microsoft Entra ID / Atlassian),
-// uzywana zarowno przez src/webTrigger.js (synchronizacja krokow - tylko
+// uzywana zarowno przez src/webTrigger.js (synchronizacja samouczkow - tylko
 // potwierdza, ze token jest wazny), jak i src/onboardingReport.js (musi
 // dodatkowo wiedziec KTO wykonal akcje, do raportu w panelu admina).
 
@@ -26,12 +26,68 @@ async function verifyMicrosoftIdToken(idToken, clientId, tenantId) {
   return payload;
 }
 
-async function fetchAtlassianProfile(accessToken) {
+// --- Atlassian ---
+//
+// OAuth 2.0 (3LO) Atlassiana wydaje NIEPRZEZROCZYSTE (opaque) tokeny dostepu -
+// to nie JWT, wiec nie da sie ich zweryfikowac lokalnie (podpis, aud, iss).
+// Atlassian nie udostepnia tez publicznego endpointu introspekcji tokenu dla
+// aplikacji trzecich. Jedyny sposob sprawdzenia "czy token jest wazny" to
+// zapytanie GET https://api.atlassian.com/me - ktore jednak potwierdza tylko
+// TOZSAMOSC (kim jest wlasciciel), a NIE to, ze token zostal wydany akurat
+// DLA TEJ aplikacji (kazdy wazny token Atlassiana z podstawowym scope'em
+// tozsamosci przejdzie ten test, niezaleznie od tego, ktora integracja o
+// niego poprosila).
+//
+// Dlatego zamiast ufac surowemu tokenowi Atlassiana bezposrednio, appka
+// wystawia WLASNY, podpisany JWT (patrz signAppAtlassianToken - wywolywane
+// raz, w src/atlassianOAuth.js, zaraz po wymianie kodu na token i pobraniu
+// profilu). Rozszerzenie przechowuje i wysyla dalej TEN token, a nie
+// surowy token Atlassiana - dzieki temu weryfikacja tutaj jest lokalna
+// (bez wywolania sieciowego) i sprawdza `aud`/`iss`, dokladnie tak samo jak
+// dla Microsoftu.
+
+const ATLASSIAN_TOKEN_ISSUER = 'urn:jira-onboarding-guide';
+const ATLASSIAN_TOKEN_AUDIENCE = 'jira-onboarding-guide-extension';
+
+function getAtlassianSigningKey() {
+  const secret = process.env.ATLASSIAN_SESSION_SECRET;
+  if (!secret) {
+    throw new Error(
+      'Brak ATLASSIAN_SESSION_SECRET - ustaw: forge variables set --encrypt ATLASSIAN_SESSION_SECRET <losowy-sekret>'
+    );
+  }
+  return new TextEncoder().encode(secret);
+}
+
+export async function signAppAtlassianToken({ accountId, name, email }, expiresInSeconds) {
+  const key = getAtlassianSigningKey();
+  return new SignJWT({ name: name || null, email: email || null })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(accountId)
+    .setIssuer(ATLASSIAN_TOKEN_ISSUER)
+    .setAudience(ATLASSIAN_TOKEN_AUDIENCE)
+    .setIssuedAt()
+    .setExpirationTime(`${Math.max(60, Math.floor(expiresInSeconds))}s`)
+    .sign(key);
+}
+
+async function verifyAppAtlassianToken(token) {
+  const key = getAtlassianSigningKey();
+  const { payload } = await jwtVerify(token, key, {
+    issuer: ATLASSIAN_TOKEN_ISSUER,
+    audience: ATLASSIAN_TOKEN_AUDIENCE,
+  });
+  return payload;
+}
+
+// Uzywana tylko przy logowaniu (src/atlassianOAuth.js), zeby ustalic
+// tozsamosc do zaszycia we wlasnym tokenie - patrz komentarz wyzej.
+export async function fetchAtlassianProfile(accessToken) {
   const response = await fetch('https://api.atlassian.com/me', {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!response.ok) {
-    throw new Error(`Token Atlassian odrzucony (status ${response.status}).`);
+    throw new Error(`Nie udalo sie pobrac profilu Atlassian (status ${response.status}).`);
   }
   return response.json();
 }
@@ -57,7 +113,7 @@ export async function isBearerValid(token) {
   }
   if (process.env.REQUIRE_ATLASSIAN_AUTH === 'true') {
     try {
-      await fetchAtlassianProfile(token);
+      await verifyAppAtlassianToken(token);
       return true;
     } catch (err) {
       // niepoprawny token Atlassian
@@ -86,12 +142,12 @@ export async function identifyBearer(token) {
     }
   }
   try {
-    const profile = await fetchAtlassianProfile(token);
+    const payload = await verifyAppAtlassianToken(token);
     return {
       provider: 'atlassian',
-      subjectId: profile.account_id,
-      name: profile.name || null,
-      email: profile.email || null,
+      subjectId: payload.sub,
+      name: payload.name || null,
+      email: payload.email || null,
     };
   } catch (err) {
     return null;

@@ -1,5 +1,6 @@
 import { storage } from '@forge/api';
 import { getBearerToken, identifyBearer } from './identity.js';
+import { isDangerousObjectKey } from './tours.js';
 
 // Endpoint, do ktorego rozszerzenie przegladarki zglasza zdarzenia
 // logowania i postepu w samouczkach (patrz browser-extension/background.js
@@ -37,7 +38,7 @@ async function upsertReport(key, identity, { event, tourId, stepId }) {
   };
 
   const tours = { ...(existing.tours || {}) };
-  if (tourId) {
+  if (tourId && !isDangerousObjectKey(tourId)) {
     const tourProgress = tours[tourId] || emptyTourProgress();
     if (event === 'step_completed' && stepId) {
       tourProgress.completedStepIds = Array.from(

@@ -1,6 +1,6 @@
 import Resolver from '@forge/resolver';
 import { storage, requestJira, route, startsWith } from '@forge/api';
-import { getTours } from '../tours.js';
+import { getTours, isDangerousObjectKey } from '../tours.js';
 
 // Resolver uzywany WYLACZNIE przez panel na widoku zgloszenia oraz stronie
 // "Moj postep" w ustawieniach osobistych (jira:issuePanel,
@@ -71,7 +71,7 @@ resolver.define('resetOnboardingState', async (req) => {
 resolver.define('recordStepSeen', async (req) => {
   const { accountId } = req.context;
   const { tourId, stepId } = req.payload || {};
-  if (!tourId || !stepId) {
+  if (!tourId || !stepId || isDangerousObjectKey(tourId)) {
     return { ok: false };
   }
 
@@ -110,7 +110,7 @@ resolver.define('recordStepSeen', async (req) => {
 resolver.define('recordTourFinished', async (req) => {
   const { accountId } = req.context;
   const { tourId, outcome } = req.payload || {}; // outcome: 'completed' | 'skipped'
-  if (!tourId) {
+  if (!tourId || isDangerousObjectKey(tourId)) {
     return { ok: false };
   }
   const key = reportKey(accountId);

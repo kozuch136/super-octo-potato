@@ -72,17 +72,33 @@ aplikacje OAuth Atlassiana zwykle maja client_secret, ktorego rozszerzenie nie m
 przechowac (kazdy moze rozpakowac `.crx` i go odczytac). Rozszerzenie robi tylko czesc publiczna
 (ekran logowania + PKCE), a `code` przekazuje do Forge, ktora dokleja sekret i konczy wymiane.
 
+**Wazne, bo to nietypowe wzgledem Microsoftu:** appka Forge NIE przekazuje rozszerzeniu surowego
+tokenu dostepu Atlassiana. Token Atlassiana z OAuth 2.0 (3LO) jest **nieprzezroczysty (opaque)** -
+to nie JWT, wiec nie da sie go pozniej zweryfikowac lokalnie (podpis/`aud`/`iss`), a Atlassian nie
+udostepnia publicznego endpointu introspekcji dla aplikacji trzecich. Jedyny sposob sprawdzenia
+"czy token jest wazny" to zapytanie `GET https://api.atlassian.com/me` - ktore jednak potwierdza
+tylko czyjas tozsamosc, a NIE to, ze token zostal wydany akurat dla TEJ aplikacji (kazdy wazny
+token Atlassiana z podstawowym scope'em tozsamosci przeszedlby ten test, niezaleznie ktora
+integracja o niego poprosila). Dlatego `src/atlassianOAuth.js` po wymianie kodu **od razu pobiera
+profil i wystawia wlasny, podpisany JWT** (`signAppAtlassianToken` w `src/identity.js`, algorytm
+HS256, `aud`/`iss` specyficzne dla tej appki) - to WLASNIE TEN token trafia do rozszerzenia i jest
+pozniej wysylany jako `Authorization: Bearer`. Dzieki temu `src/identity.js` weryfikuje go w pelni
+lokalnie (bez wywolania sieciowego), sprawdzajac podpis + `aud` + `iss`, dokladnie tak samo jak
+token Microsoftu - token wydany dla jakiejkolwiek innej integracji Atlassiana zostanie odrzucony.
+
 1. [developer.atlassian.com](https://developer.atlassian.com/console/myapps/) -> Create -> OAuth
    2.0 integration.
 2. Authorization -> dodaj redirect URI: `https://eamneljpkombhcofgdkmgehjnefhodko.chromiumapp.org/`.
 3. Permissions: nie sa potrzebne zadne scope'y do Jira/Confluence API - logujemy tylko tozsamosc
    (`read:me`).
 4. Skopiuj **Client ID** i **Secret** z zakladki Settings.
-5. Sekret **nigdy** nie trafia do rozszerzenia ani do repo. Ustaw go jako zaszyfrowana zmienna
-   Forge:
+5. Sekrety **nigdy** nie trafiaja do rozszerzenia ani do repo. Ustaw je jako zaszyfrowane zmienne
+   Forge - `ATLASSIAN_SESSION_SECRET` to dowolny, losowy string (np. `openssl rand -base64 32`),
+   uzywany WYLACZNIE do podpisywania wlasnych tokenow appki (nie ma zwiazku z kontem Atlassian):
    ```bash
    forge variables set --encrypt ATLASSIAN_OAUTH_CLIENT_ID <client id>
    forge variables set --encrypt ATLASSIAN_OAUTH_CLIENT_SECRET <client secret>
+   forge variables set --encrypt ATLASSIAN_SESSION_SECRET <losowy sekret, np. z "openssl rand -base64 32">
    forge deploy
    ```
 6. Adres wymiany tokenu to web trigger appki Forge (`atlassian-oauth-exchange`, patrz
@@ -110,14 +126,38 @@ Zeby zaczal wymagac zalogowania:
 - Dla Microsoft: ustaw `forge variables set --encrypt MS_OAUTH_CLIENT_ID <ten sam client id co w
   rozszerzeniu>` oraz `MS_OAUTH_TENANT_ID <tenant id>`. Endpoint zacznie kryptograficznie
   weryfikowac podpis JWT wzgledem kluczy publicznych Microsoftu (JWKS) oraz sprawdzac `aud`/`iss`.
-- Dla Atlassian: ustaw `forge variables set --encrypt REQUIRE_ATLASSIAN_AUTH true`. Endpoint
-  zacznie sprawdzac token wywolaniem `GET https://api.atlassian.com/me` (musi zwrocic 200).
+- Dla Atlassian: ustaw `forge variables set --encrypt REQUIRE_ATLASSIAN_AUTH true` (wymaga tez
+  wczesniej ustawionego `ATLASSIAN_SESSION_SECRET` - patrz wyzej). Endpoint zacznie lokalnie
+  weryfikowac podpis/`aud`/`iss` wlasnego tokenu appki (nie surowego tokenu Atlassiana - patrz
+  wyzej dlaczego).
+
+## Historia audytu bezpieczenstwa
+
+Po audycie bezpieczenstwa domkniete zostaly trzy znaleziska:
+
+1. **Brak weryfikacji `aud` dla tokenu Atlassian** - opisane wyzej w sekcji o Atlassian OAuth.
+   Zamiast ufac surowemu, nieprzezroczystemu tokenowi Atlassiana (ktory kazda integracja z
+   podstawowym scope'em tozsamosci moglaby przedstawic), appka wystawia teraz wlasny podpisany
+   JWT z `aud`/`iss` specyficznymi dla siebie, weryfikowany lokalnie w `src/identity.js`.
+   Rzeczywiste dzialanie podpisu/weryfikacji (poprawny sekret, zly sekret, zla `aud`, wygasly
+   token) zostalo przetestowane bezposrednio pakietem `jose` w tym srodowisku - wszystkie cztery
+   przypadki dzialaja poprawnie (zly sekret/zla `aud`/wygasly token sa odrzucane).
+2. **Zanieczyszczenie prototypu (prototype pollution)** przez niewalidowany `tourId` uzywany jako
+   klucz obiektu w `src/resolvers/panel.js` (`recordStepSeen`, `recordTourFinished`) oraz
+   `src/onboardingReport.js` (`upsertReport`) - wartosc `"__proto__"` (lub `"constructor"`/
+   `"prototype"`) pozwalalaby dopisac wlasnosc do `Object.prototype` zamiast do zwyklego klucza
+   mapy. W praktyce niegrozne w tym kodzie (nic nie odczytywalo tych pol z "nagiego" obiektu, a
+   granice procesow Forge i serializacja JSON i tak by to odcialy), ale zablokowane u zrodla -
+   patrz `isDangerousObjectKey` w `src/tours.js`.
 
 ## Co zostalo zweryfikowane, a co nie
 
 **Zweryfikowane w tym srodowisku:**
 - Skladnia wszystkich plikow (`node --check`, bundlowanie esbuild z rozwiazywaniem importow),
   wlacznie z `src/onboardingReport.js` i `src/identity.js`.
+- Podpisywanie/weryfikacja wlasnego tokenu Atlassiana (`SignJWT`/`jwtVerify` z pakietu `jose`) -
+  przetestowane bezposrednio poza kodem appki: poprawny token przechodzi, token z niewlasciwym
+  sekretem/`aud`/wygasly zostaje odrzucony.
 - Manifest Forge (`manifest.yml`) wzgledem oficjalnego schematu `@forge/manifest` (pole
   `permissions.external.fetch.backend` istnieje i przyjmuje liste domen; `jira:issuePanel` i
   `jira:adminPage` maja teraz ROZDZIELONE funkcje resolvera - `panelResolver` / `adminResolver` -

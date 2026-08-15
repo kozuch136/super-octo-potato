@@ -172,3 +172,14 @@ export async function getTours() {
 export async function setTours(tours) {
   await storage.set(TOURS_KEY, tours);
 }
+
+// `tourId` z zadania klienta (panel Jiry, rozszerzenie) trafia jako klucz
+// obiektu w src/resolvers/panel.js i src/onboardingReport.js
+// (`tours[tourId] = ...`). Bez tej ochrony wartosc "__proto__" (albo
+// "constructor"/"prototype") pozwolilaby dopisac wlasnosc bezposrednio do
+// Object.prototype (zanieczyszczenie prototypu) zamiast do zwyklego klucza
+// mapy. Uzycie tego bylo w praktyce niegrozne w tym repo (nic nie odczytuje
+// tych pol z "nagiego" obiektu), ale koszt zabezpieczenia jest zerowy.
+export function isDangerousObjectKey(key) {
+  return key === '__proto__' || key === 'constructor' || key === 'prototype';
+}
