@@ -1,0 +1,120 @@
+.joc-backdrop {
+  position: fixed;
+  z-index: 2147483000;
+  border-radius: 6px;
+  box-shadow: 0 0 0 9999px rgba(9, 30, 66, 0.6);
+  pointer-events: none;
+  transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
+}
+
+.joc-tooltip {
+  position: fixed;
+  z-index: 2147483001;
+  max-width: 320px;
+  background: #ffffff;
+  color: #172b4d;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(9, 30, 66, 0.35);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  padding: 16px;
+}
+
+.joc-tooltip__heading {
+  font-weight: 600;
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+
+.joc-tooltip__description {
+  margin: 0 0 14px;
+  color: #44546f;
+}
+
+.joc-tooltip__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.joc-tooltip__progress {
+  font-size: 12px;
+  color: #7a869a;
+}
+
+.joc-tooltip__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.joc-btn {
+  border: none;
+  border-radius: 3px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.joc-btn--primary {
+  background: #0052cc;
+  color: #ffffff;
+}
+
+.joc-btn--primary:hover {
+  background: #0747a6;
+}
+
+.joc-btn--subtle {
+  background: transparent;
+  color: #42526e;
+}
+
+.joc-btn--subtle:hover {
+  background: #f4f5f7;
+}
+
+.joc-launcher {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #0052cc;
+  color: #ffffff;
+  border: none;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 2147482999;
+  box-shadow: 0 4px 10px rgba(9, 30, 66, 0.35);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+.joc-launcher:hover {
+  background: #0747a6;
+}
+
+.joc-picker-highlight {
+  outline: 2px solid #ff5630 !important;
+  outline-offset: 1px !important;
+  cursor: crosshair !important;
+}
+
+.joc-picker-banner {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483002;
+  background: #172b4d;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-size: 13px;
+}

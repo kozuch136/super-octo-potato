@@ -1,5 +1,23 @@
 # super-octo-potato — Onboarding dla nowych pracownikow w Jirze
 
+Dwa alternatywne wdrozenia jednego pomyslu: prosty odpowiednik Digital Adoption Platform (jak
+WalkMe) skupiony na konkretnym problemie — nowi pracownicy nie wiedza, jak poprawnie
+zalozyc/uzupelnic ticket zgodnie z procedura firmy. Wybierz podejscie zalezne od tego, czy
+wazniejsza jest dystrybucja jako oficjalna appka Jiry, czy realne podswietlanie prawdziwych pol
+formularza:
+
+| | [`/` (Forge app)](#forge-app-glowny-katalog) | [`browser-extension/`](browser-extension/README.md) |
+|---|---|---|
+| Instalacja | appka Jira (Atlassian Marketplace / instalacja prywatna) | rozszerzenie Chrome (per uzytkownik lub przez Chrome Enterprise) |
+| Co podswietla | wlasna makieta pol w panelu bocznym | **prawdziwe** pola natywnego formularza Jiry |
+| Wymaga | konto deweloperskie Atlassian, `forge deploy` | wgranie folderu w trybie dewelopera / polityke MDM |
+| Ograniczenie | nie dotyka realnego DOM formularza (izolacja iframe) | zalezy od (niepublikowanej) struktury DOM Jiry — selektory trzeba weryfikowac |
+
+Ponizej opisana jest wersja Forge. Wersja rozszerzenia ma wlasny opis w
+[`browser-extension/README.md`](browser-extension/README.md).
+
+## Forge app (glowny katalog)
+
 Natywna aplikacja [Atlassian Forge](https://developer.atlassian.com/platform/forge/), ktora
 wbudowuje w Jire prosty odpowiednik Digital Adoption Platform (np. WalkMe) skupiony na jednym
 konkretnym problemie: nowi pracownicy nie wiedza, jak poprawnie zalozyc/uzupelnic ticket zgodnie

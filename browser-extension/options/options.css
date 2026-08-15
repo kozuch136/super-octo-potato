@@ -1,0 +1,140 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  color: #172b4d;
+  background: #f4f5f7;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.lead {
+  font-size: 13px;
+  color: #44546f;
+  margin: 0;
+}
+
+.notice {
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+.notice--info {
+  background: #deebff;
+  color: #0747a6;
+}
+
+.notice--success {
+  background: #e3fcef;
+  color: #006644;
+}
+
+.notice--error {
+  background: #ffebe6;
+  color: #bf2600;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.step {
+  background: #ffffff;
+  border: 1px solid #dfe1e6;
+  border-radius: 4px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5e6c84;
+}
+
+.field input,
+.field textarea {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid #dfe1e6;
+  border-radius: 3px;
+}
+
+.field-with-button {
+  display: flex;
+  gap: 8px;
+}
+
+.field-with-button input {
+  flex: 1;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.row--space-between {
+  justify-content: space-between;
+}
+
+.btn {
+  border: none;
+  border-radius: 3px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn--primary {
+  background: #0052cc;
+  color: #ffffff;
+}
+
+.btn--primary:hover {
+  background: #0747a6;
+}
+
+.btn--subtle {
+  background: #ebecf0;
+  color: #172b4d;
+}
+
+.btn--subtle:hover {
+  background: #dfe1e6;
+}
+
+.btn--danger {
+  background: transparent;
+  color: #bf2600;
+}
+
+.btn--danger:hover {
+  background: #ffebe6;
+}

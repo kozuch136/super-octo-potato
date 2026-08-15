@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ustawienia samouczka onboardingowego</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <div class="page">
+      <h1>Kroki samouczka onboardingowego</h1>
+      <p class="lead">
+        Zdefiniuj kroki, ktore nowi pracownicy zobacza przy pierwszej wizycie w Jirze.
+        Kazdy krok wskazuje jedno pole na stronie (przez selektor CSS) i wyjasnia, jak
+        je uzupelnic zgodnie z procedura firmy. Uzyj przycisku
+        <strong>„Zaznacz element”</strong>, aby wskazac pole klikniеciem zamiast recznie
+        wpisywac selektor.
+      </p>
+
+      <div id="managed-notice" class="notice notice--info" hidden>
+        Kroki sa obecnie wdrozone centralnie przez administratora IT (Chrome Enterprise
+        policy) i nie mozna ich edytowac lokalnie.
+      </div>
+      <div id="status" class="notice" hidden></div>
+
+      <div id="steps" class="steps"></div>
+
+      <div class="row">
+        <button id="add-step" class="btn btn--subtle">Dodaj krok</button>
+      </div>
+
+      <div class="row row--space-between">
+        <div class="row">
+          <button id="export" class="btn btn--subtle">Eksportuj JSON</button>
+          <button id="import" class="btn btn--subtle">Importuj JSON</button>
+          <input id="import-file" type="file" accept="application/json" hidden />
+        </div>
+        <button id="save" class="btn btn--primary">Zapisz</button>
+      </div>
+    </div>
+
+    <template id="step-template">
+      <div class="step" data-step>
+        <div class="field">
+          <label>Identyfikator kroku</label>
+          <input type="text" data-field="id" />
+        </div>
+        <div class="field">
+          <label>Selektor CSS pola na stronie Jiry</label>
+          <div class="field-with-button">
+            <input type="text" data-field="selector" />
+            <button type="button" class="btn btn--subtle" data-pick>Zaznacz element</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Naglowek kroku</label>
+          <input type="text" data-field="heading" />
+        </div>
+        <div class="field">
+          <label>Opis / wskazowka</label>
+          <textarea data-field="description" rows="3"></textarea>
+        </div>
+        <div class="row">
+          <button type="button" class="btn btn--subtle" data-up>W gore</button>
+          <button type="button" class="btn btn--subtle" data-down>W dol</button>
+          <button type="button" class="btn btn--danger" data-remove>Usun krok</button>
+        </div>
+      </div>
+    </template>
+
+    <script src="options.js"></script>
+  </body>
+</html>
