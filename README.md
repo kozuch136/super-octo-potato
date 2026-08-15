@@ -22,6 +22,11 @@ tresc samouczka wystarczy skonfigurowac raz — w panelu admina Jiry. Zobacz sek
 [„Jedno zrodlo prawdy: synchronizacja Forge → rozszerzenie”](#jedno-zrodlo-prawdy-synchronizacja-forge--rozszerzenie)
 nizej.
 
+**Zero akcji ze strony pracownika:** polaczenie powyzszej synchronizacji z centralnym wymuszeniem
+instalacji rozszerzenia (`browser-extension/deploy/`) daje pelnie bezobslugowe wdrozenie — appka
+Forge jest jedynym miejscem, w ktorym ktokolwiek recznie edytuje tresc samouczka; pracownik
+dostaje dzialajace rozszerzenie i samouczek bez klikania czegokolwiek.
+
 ## Forge app (glowny katalog)
 
 Natywna aplikacja [Atlassian Forge](https://developer.atlassian.com/platform/forge/), ktora

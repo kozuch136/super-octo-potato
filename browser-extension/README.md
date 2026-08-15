@@ -63,9 +63,20 @@ Dla pojedynczych uzytkownikow: eksport/import JSON w Ustawieniach (przyciski „
 
 Dla calej organizacji (Chrome Enterprise / Google Workspace): rozszerzenie odczytuje
 `chrome.storage.managed`, ktorego schemat jest w `managed_schema.json`. IT moze wdrozyc
-rozszerzenie centralnie wraz z polityka `ExtensionSettings` ustawiajaca `steps` — wtedy strona
-Ustawien pokazuje kroki jako tylko-do-odczytu (nie da sie ich nadpisac lokalnie), co gwarantuje
-spojna tresc samouczka dla wszystkich pracownikow.
+rozszerzenie centralnie wraz z polityka `ExtensionSettings` ustawiajaca `steps` (lub `syncUrl`,
+patrz nizej) — wtedy strona Ustawien pokazuje kroki jako tylko-do-odczytu (nie da sie ich
+nadpisac lokalnie), co gwarantuje spojna tresc samouczka dla wszystkich pracownikow.
+
+### Pelne wdrozenie bezobslugowe (zero akcji ze strony pracownika)
+
+Instrukcje powyzej (instalacja recznie w trybie dewelopera, wklejanie adresu synchronizacji w
+Ustawieniach) sa dobre do testowania, ale wymagaja akcji uzytkownika. Zeby pracownik nie musial
+klikac NIC — rozszerzenie samo sie instaluje i samo sie konfiguruje przy pierwszym uruchomieniu
+przegladarki — zobacz gotowe szablony polityk w [`deploy/`](deploy/README.md): wymuszona
+instalacja (`ExtensionSettings` + spakowany `.crx`) polaczona z centralnie wdrozonym `syncUrl`
+(`chrome.storage.managed`) wskazujacym na appke Forge. ID tego rozszerzenia
+(`eamneljpkombhcofgdkmgehjnefhodko`) zostalo juz wyliczone i zweryfikowane empirycznie w tym
+repozytorium — szczegoly w `deploy/README.md`.
 
 ## Domena Jiry inna niz *.atlassian.net
 
