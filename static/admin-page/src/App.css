@@ -1,0 +1,50 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+.admin-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.step-editor {
+  border: 1px solid #dfe1e6;
+  border-radius: 4px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.step-editor__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.step-editor__row label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5e6c84;
+}
+
+.step-editor__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-page__actions {
+  display: flex;
+  justify-content: space-between;
+}

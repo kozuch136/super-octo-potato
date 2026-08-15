@@ -1,0 +1,18 @@
+{
+  "name": "jira-onboarding-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Natywna aplikacja Forge dla Jiry: interaktywny onboarding nowych pracownikow (samouczek krok po kroku przy zakladaniu ticketu).",
+  "scripts": {
+    "build": "npm run build --prefix static/onboarding-panel && npm run build --prefix static/admin-page",
+    "install:all": "npm install --prefix static/onboarding-panel && npm install --prefix static/admin-page",
+    "lint": "eslint src static/onboarding-panel/src static/admin-page/src",
+    "forge:deploy": "forge deploy",
+    "forge:install": "forge install",
+    "forge:tunnel": "forge tunnel"
+  },
+  "dependencies": {
+    "@forge/api": "^4.0.0",
+    "@forge/resolver": "^1.6.0"
+  }
+}

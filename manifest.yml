@@ -1,0 +1,38 @@
+modules:
+  jira:issuePanel:
+    - key: onboarding-issue-panel
+      resource: onboarding-panel
+      resolver:
+        function: resolver
+      title: Przewodnik dla nowych pracowników
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+
+  jira:globalPage:
+    - key: onboarding-admin-page
+      resource: admin-page
+      resolver:
+        function: resolver
+      title: Ustawienia samouczka onboardingowego
+      icon: https://developer.atlassian.com/platform/forge/images/icons/global-page-icon.svg
+
+  function:
+    - key: resolver
+      handler: index.handler
+
+resources:
+  - key: onboarding-panel
+    path: static/onboarding-panel/build
+  - key: admin-page
+    path: static/admin-page/build
+
+app:
+  id: ari:cloud:ecosystem::app/00000000-0000-0000-0000-000000000000
+  runtime:
+    name: nodejs20.x
+
+permissions:
+  scopes:
+    - storage:app
+  content:
+    styles:
+      - unsafe-inline
