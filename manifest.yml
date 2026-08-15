@@ -15,6 +15,13 @@ modules:
       title: Ustawienia samouczka onboardingowego
       icon: https://developer.atlassian.com/platform/forge/images/icons/global-page-icon.svg
 
+  jira:personalSettingsPage:
+    - key: onboarding-my-progress
+      resource: my-progress
+      resolver:
+        function: panelResolver
+      title: Moj postep w onboardingu
+
   webtrigger:
     - key: onboarding-steps-webtrigger
       function: webTriggerHandler
@@ -40,6 +47,8 @@ resources:
     path: static/onboarding-panel/build
   - key: admin-page
     path: static/admin-page/build
+  - key: my-progress
+    path: static/my-progress/build
 
 app:
   id: ari:cloud:ecosystem::app/00000000-0000-0000-0000-000000000000

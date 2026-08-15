@@ -51,8 +51,12 @@ z procedura firmy.
   uruchamia interaktywny samouczek typu "spotlight": krok po kroku podswietla kolejne pola
   (priorytet, komponent, opis, przypisanie...) i wyjasnia, jak je uzupelnic zgodnie z wewnetrzna
   procedura. Uzytkownik moze tez recznie uruchomic samouczek ponownie w dowolnym momencie.
-- **Strona administracyjna** (`jira:globalPage`) — administrator Jiry definiuje tresc kazdego
-  kroku (naglowek + opis) tak, aby odzwierciedlala realna procedure firmy, bez zmian w kodzie.
+- **Strona administracyjna** (`jira:adminPage`, tylko dla adminow Jiry) — administrator definiuje
+  tresc kazdego kroku (naglowek + opis) tak, aby odzwierciedlala realna procedure firmy, bez zmian
+  w kodzie, oraz widzi zbiorczy raport kto ukonczyl samouczek.
+- **„Moj postep” w ustawieniach osobistych** (`jira:personalSettingsPage`) — kazdy pracownik moze
+  sam sprawdzic swoj wlasny postep (ktore kroki ukonczyl, w panelu Jiry i/lub w rozszerzeniu
+  przegladarki, jesli z niego korzysta) bez czekania na admina.
 - **Stan per uzytkownik** — Forge Storage API zapamietuje, czy dany uzytkownik (`accountId`) juz
   widzial samouczek, wiec pojawia sie automatycznie tylko raz.
 
@@ -69,12 +73,17 @@ a nie klikala za uzytkownika w prawdziwe pola.
 ## Struktura repo
 
 ```
-manifest.yml                     — definicja modulow Forge (panel + strona admina + web trigger)
-src/steps.js                     — wspolny model danych krokow (uzywany przez resolver i web trigger)
-src/resolvers/index.js           — backend: CRUD na krokach + stan "widziano" per uzytkownik
-src/webTrigger.js                — publiczny endpoint HTTP odczytywany przez rozszerzenie przegladarki
+manifest.yml                     — definicja modulow Forge (panel, admin, "moj postep", web triggery)
+src/steps.js                     — wspolny model danych krokow
+src/identity.js                  — wspolna weryfikacja tokenow logowania (Microsoft/Atlassian)
+src/resolvers/panel.js           — backend dla jira:issuePanel + jira:personalSettingsPage
+src/resolvers/admin.js           — backend WYLACZNIE dla jira:adminPage (osobna funkcja Forge)
+src/webTrigger.js                — publiczny endpoint HTTP: synchronizacja krokow z rozszerzeniem
+src/atlassianOAuth.js            — wymiana kodu OAuth Atlassian na token (trzyma client_secret)
+src/onboardingReport.js          — endpoint: rozszerzenie zglasza logowanie/postep
 static/onboarding-panel/         — Custom UI: panel z samouczkiem (React + @atlaskit/onboarding)
-static/admin-page/               — Custom UI: edytor tresci krokow + panel synchronizacji (React)
+static/admin-page/               — Custom UI: edytor tresci krokow + raport zbiorczy (React)
+static/my-progress/              — Custom UI: wlasny postep pracownika (React)
 ```
 
 ## Uruchomienie lokalne / wdrozenie
@@ -86,8 +95,8 @@ deweloperskie Atlassian.
 npm install -g @forge/cli
 forge login
 
-npm run install:all   # instaluje zaleznosci obu frontendow (static/*)
-npm run build          # buduje oba frontendy do static/*/build
+npm run install:all   # instaluje zaleznosci wszystkich frontendow (static/*)
+npm run build          # buduje wszystkie frontendy do static/*/build
 
 forge deploy
 forge install          # podpiecie appki do wybranej instancji Jira Cloud
@@ -101,6 +110,17 @@ Po instalacji appki w Jirze: **Ustawienia aplikacji → Ustawienia samouczka onb
 (strona globalna dodana przez te appke). Tam mozna dodawac, usuwac, zmieniac kolejnosc i edytowac
 tresc poszczegolnych krokow — zmiany sa widoczne natychmiast we wszystkich panelach na widokach
 zgloszen.
+
+## Wlasny postep pracownika
+
+Kazdy pracownik moze sam sprawdzic swoj postep bez pytania admina: strona „Moj postep w
+onboardingu” (`jira:personalSettingsPage`) w ustawieniach osobistych Jiry (klik na awatar w
+prawym gornym rogu → ustawienia osobiste — dokladna nazwa/miejsce w menu zalezy od wersji Jira
+Cloud, **nie zweryfikowane na zywo** w tym srodowisku). Pokazuje pasek postepu i liste ukonczonych
+krokow — osobno dla panelu w Jirze i (jesli uzywane) dla rozszerzenia przegladarki. Resolver
+(`getMyProgress` w `src/resolvers/panel.js`) zwraca wylacznie dane wywolujacego uzytkownika —
+`accountId` pochodzi z kontekstu Forge, nie z zadnego parametru, wiec nie da sie tym resolverem
+podejrzec cudzego postepu.
 
 ## Jedno zrodlo prawdy: synchronizacja Forge → rozszerzenie
 
