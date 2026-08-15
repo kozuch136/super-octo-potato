@@ -35,15 +35,24 @@
     await chrome.storage.local.set({ tourSeen: true });
   }
 
+  function safeQuery(selector) {
+    try {
+      return document.querySelector(selector);
+    } catch (err) {
+      console.warn(`[Jira Onboarding Guide] Nieprawidlowy selektor CSS: "${selector}".`, err);
+      return null;
+    }
+  }
+
   function waitForElement(selector, timeoutMs) {
     return new Promise((resolve) => {
-      const existing = document.querySelector(selector);
+      const existing = safeQuery(selector);
       if (existing) {
         resolve(existing);
         return;
       }
       const observer = new MutationObserver(() => {
-        const el = document.querySelector(selector);
+        const el = safeQuery(selector);
         if (el) {
           observer.disconnect();
           clearTimeout(timer);

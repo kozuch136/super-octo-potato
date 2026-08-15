@@ -7,7 +7,7 @@ modules:
       title: Przewodnik dla nowych pracowników
       icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
 
-  jira:globalPage:
+  jira:adminPage:
     - key: onboarding-admin-page
       resource: admin-page
       resolver:
