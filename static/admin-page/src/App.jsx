@@ -68,6 +68,91 @@ function SyncPanel() {
         label="Adres wymiany tokenu logowania Atlassian"
         url={info?.atlassianOAuthExchangeUrl}
       />
+      <p>
+        Trzeci adres tez dziala tylko przy wlaczonym logowaniu - to on odbiera
+        zdarzenia „kto sie zalogowal / co przeszedl” pokazywane w raporcie
+        ponizej.
+      </p>
+      <CopyableUrl label="Adres raportowania (logowanie + postep)" url={info?.reportUrl} />
+    </SectionMessage>
+  );
+}
+
+const PROVIDER_LABELS = {
+  jira: 'Jira (panel)',
+  microsoft: 'Microsoft',
+  atlassian: 'Atlassian (rozszerzenie)',
+};
+
+const OUTCOME_LABELS = {
+  completed: 'Ukonczony',
+  skipped: 'Pominiety',
+};
+
+function formatDate(timestamp) {
+  if (!timestamp) return '—';
+  return new Date(timestamp).toLocaleString('pl-PL');
+}
+
+function ReportPanel({ totalSteps }) {
+  const [records, setRecords] = useState(null);
+  const [error, setError] = useState(null);
+
+  const load = () => {
+    setError(null);
+    invoke('getOnboardingReport')
+      .then((loaded) => setRecords(loaded))
+      .catch(() => setError('Nie udalo sie wczytac raportu.'));
+  };
+
+  useEffect(load, []);
+
+  return (
+    <SectionMessage title="Kto sie zalogowal i co przeszedl" appearance="information">
+      <p>
+        Dane pochodza z panelu na widoku zgloszenia (kazdy pracownik Jiry - bez
+        logowania, identyfikowany po koncie Jira) oraz z rozszerzenia przegladarki
+        (tylko jesli wlaczono w nim logowanie Microsoft/Atlassian - patrz sekcja
+        powyzej). To sa dane osobowe (imie, e-mail) - upewnij sie, ze pracownicy
+        wiedza, ze postep w samouczku jest sledzony.
+      </p>
+      <div className="report-panel__actions">
+        <Button onClick={load}>Odswiez</Button>
+      </div>
+      {error && <p className="sync-panel__status">{error}</p>}
+      {records && records.length === 0 && <p>Jeszcze nikt nie uruchomil samouczka.</p>}
+      {records && records.length > 0 && (
+        <div className="report-table-wrapper">
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th>Osoba</th>
+                <th>Zrodlo</th>
+                <th>Postep</th>
+                <th>Status</th>
+                <th>Ostatnia aktywnosc</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((record) => (
+                <tr key={record.key}>
+                  <td>
+                    <div>{record.name || '(brak nazwy)'}</div>
+                    <div className="report-table__muted">{record.email || record.key}</div>
+                  </td>
+                  <td>{PROVIDER_LABELS[record.provider] || record.provider}</td>
+                  <td>
+                    {(record.completedStepIds || []).length}
+                    {totalSteps ? ` / ${totalSteps}` : ''}
+                  </td>
+                  <td>{OUTCOME_LABELS[record.tourOutcome] || 'W trakcie'}</td>
+                  <td>{formatDate(record.lastActivityAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </SectionMessage>
   );
 }
@@ -141,6 +226,8 @@ export default function App() {
       </SectionMessage>
 
       <SyncPanel />
+
+      <ReportPanel totalSteps={steps.length} />
 
       {status && (
         <SectionMessage appearance={status.type === 'success' ? 'success' : 'error'}>

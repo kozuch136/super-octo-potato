@@ -3,7 +3,7 @@ modules:
     - key: onboarding-issue-panel
       resource: onboarding-panel
       resolver:
-        function: resolver
+        function: panelResolver
       title: Przewodnik dla nowych pracowników
       icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
 
@@ -11,7 +11,7 @@ modules:
     - key: onboarding-admin-page
       resource: admin-page
       resolver:
-        function: resolver
+        function: adminResolver
       title: Ustawienia samouczka onboardingowego
       icon: https://developer.atlassian.com/platform/forge/images/icons/global-page-icon.svg
 
@@ -20,14 +20,20 @@ modules:
       function: webTriggerHandler
     - key: atlassian-oauth-exchange
       function: atlassianOAuthExchangeHandler
+    - key: onboarding-report
+      function: onboardingReportHandler
 
   function:
-    - key: resolver
-      handler: index.handler
+    - key: panelResolver
+      handler: index.panelHandler
+    - key: adminResolver
+      handler: index.adminHandler
     - key: webTriggerHandler
       handler: index.webTriggerHandler
     - key: atlassianOAuthExchangeHandler
       handler: index.atlassianOAuthExchangeHandler
+    - key: onboardingReportHandler
+      handler: index.onboardingReportHandler
 
 resources:
   - key: onboarding-panel
@@ -43,6 +49,7 @@ app:
 permissions:
   scopes:
     - storage:app
+    - read:jira-user
   external:
     fetch:
       backend:

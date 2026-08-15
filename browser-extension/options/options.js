@@ -11,10 +11,17 @@ const msClientIdInput = document.getElementById('ms-client-id');
 const msTenantIdInput = document.getElementById('ms-tenant-id');
 const atlassianClientIdInput = document.getElementById('atlassian-client-id');
 const atlassianExchangeUrlInput = document.getElementById('atlassian-exchange-url');
+const reportUrlInput = document.getElementById('report-url');
 const authSaveBtn = document.getElementById('auth-save');
 const authConfigStatusEl = document.getElementById('auth-config-status');
 
-const AUTH_CONFIG_KEYS = ['msClientId', 'msTenantId', 'atlassianClientId', 'atlassianExchangeUrl'];
+const AUTH_CONFIG_KEYS = [
+  'msClientId',
+  'msTenantId',
+  'atlassianClientId',
+  'atlassianExchangeUrl',
+  'reportUrl',
+];
 
 let managed = false;
 let pickingRow = null;
@@ -171,13 +178,19 @@ async function loadAuthConfigSection() {
   msTenantIdInput.value = values.msTenantId;
   atlassianClientIdInput.value = values.atlassianClientId;
   atlassianExchangeUrlInput.value = values.atlassianExchangeUrl;
+  reportUrlInput.value = values.reportUrl;
 
   if (isManaged) {
-    [msClientIdInput, msTenantIdInput, atlassianClientIdInput, atlassianExchangeUrlInput, authSaveBtn].forEach(
-      (el) => {
-        el.disabled = true;
-      }
-    );
+    [
+      msClientIdInput,
+      msTenantIdInput,
+      atlassianClientIdInput,
+      atlassianExchangeUrlInput,
+      reportUrlInput,
+      authSaveBtn,
+    ].forEach((el) => {
+      el.disabled = true;
+    });
     authConfigStatusEl.textContent = 'Konfiguracja logowania wdrozona centralnie przez IT.';
   }
 }
@@ -188,6 +201,7 @@ authSaveBtn.addEventListener('click', async () => {
     msTenantId: msTenantIdInput.value.trim() || undefined,
     atlassianClientId: atlassianClientIdInput.value.trim() || undefined,
     atlassianExchangeUrl: atlassianExchangeUrlInput.value.trim() || undefined,
+    reportUrl: reportUrlInput.value.trim() || undefined,
   });
   authConfigStatusEl.textContent = 'Zapisano konfiguracje logowania.';
 });

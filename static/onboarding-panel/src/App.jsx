@@ -43,10 +43,10 @@ export default function App() {
       .catch(() => setLoading(false));
   }, []);
 
-  const finishTour = async () => {
+  const finishTour = async (outcome = 'completed') => {
     setActiveStep(-1);
     setSeen(true);
-    await invoke('markOnboardingSeen');
+    await Promise.all([invoke('markOnboardingSeen'), invoke('recordTourFinished', { outcome })]);
   };
 
   const restartTour = async () => {
@@ -56,10 +56,14 @@ export default function App() {
   };
 
   const next = () => {
+    const currentStep = steps[activeStep];
+    if (currentStep) {
+      invoke('recordStepSeen', { stepId: currentStep.id }).catch(() => {});
+    }
     if (activeStep < steps.length - 1) {
       setActiveStep(activeStep + 1);
     } else {
-      finishTour();
+      finishTour('completed');
     }
   };
 

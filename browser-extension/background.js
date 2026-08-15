@@ -4,7 +4,14 @@ import { signInWithAtlassian } from './auth/atlassian.js';
 const ALARM_NAME = 'joc-sync';
 const SYNC_PERIOD_MINUTES = 360; // co 6h
 
-const CONFIG_KEYS = ['syncUrl', 'msClientId', 'msTenantId', 'atlassianClientId', 'atlassianExchangeUrl'];
+const CONFIG_KEYS = [
+  'syncUrl',
+  'msClientId',
+  'msTenantId',
+  'atlassianClientId',
+  'atlassianExchangeUrl',
+  'reportUrl',
+];
 
 async function getManagedConfig() {
   try {
@@ -29,6 +36,15 @@ function isAuthRequired(config) {
     (config.msClientId && config.msTenantId) ||
       (config.atlassianClientId && config.atlassianExchangeUrl)
   );
+}
+
+// Microsoft: wysylamy idToken (JWT z aud=nasz client_id, weryfikowalny przez
+// Forge wzgledem JWKS Microsoftu - patrz src/identity.js). Atlassian: nie ma
+// id_token w 3LO, wiec wysylamy accessToken (Forge sprawdza go wywolaniem
+// api.atlassian.com/me).
+function getBearerToken(auth) {
+  if (!auth) return null;
+  return auth.provider === 'microsoft' ? auth.idToken : auth.accessToken;
 }
 
 // --- Logowanie (Microsoft Entra ID / Atlassian OAuth) ---
@@ -61,11 +77,41 @@ async function signIn(provider) {
     throw new Error(`Nieznany dostawca logowania: ${provider}`);
   }
   await chrome.storage.local.set({ auth: result });
+  reportEvent('login').catch(() => {});
   return result;
 }
 
 async function signOut() {
   await chrome.storage.local.remove('auth');
+}
+
+// --- Raportowanie zdarzen (kto sie zalogowal / co przeszedl) ---
+// Wysylane "best effort" - brak polaczenia albo brak skonfigurowanego
+// reportUrl nie przerywa dzialania samouczka, tylko nie trafia do raportu
+// w panelu admina Jiry.
+
+async function reportEvent(event, stepId) {
+  const [config, auth] = await Promise.all([getConfig(), getAuthState()]);
+  if (!config.reportUrl || !auth) {
+    return { ok: false, error: 'Brak logowania lub adresu raportowania.' };
+  }
+  const token = getBearerToken(auth);
+  if (!token) {
+    return { ok: false, error: 'Brak tokenu.' };
+  }
+  try {
+    const response = await fetch(config.reportUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ event, stepId }),
+    });
+    if (!response.ok) {
+      return { ok: false, error: `Serwer zwrocil status ${response.status}.` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message || 'Blad sieci.' };
+  }
 }
 
 // --- Synchronizacja krokow z Forge ---
@@ -83,9 +129,10 @@ async function syncFromForge(explicitUrl) {
 
   try {
     const auth = await getAuthState();
+    const token = getBearerToken(auth);
     const headers = {};
-    if (auth?.accessToken) {
-      headers.Authorization = `Bearer ${auth.accessToken}`;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
     const response = await fetch(url, { method: 'GET', headers });
     if (!response.ok) {
@@ -162,6 +209,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     Promise.all([getAuthState(), getConfig()]).then(([auth, config]) =>
       sendResponse({ auth, authRequired: isAuthRequired(config) })
     );
+    return true;
+  }
+  if (message.type === 'JOC_REPORT_EVENT') {
+    reportEvent(message.event, message.stepId).then(sendResponse);
     return true;
   }
   if (message.type === 'JOC_OPEN_PAGE') {

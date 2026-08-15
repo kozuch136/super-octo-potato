@@ -32,6 +32,12 @@ przed uruchomieniem samouczka i uzywac tokenu z tego logowania do zabezpieczenia
 Forge (zamiast polegac tylko na tajnosci adresu URL) — patrz
 [`browser-extension/auth/README.md`](browser-extension/auth/README.md).
 
+**Raport „kto sie zalogowal i co przeszedl”:** panel admina w Jirze (sekcja „Kto sie zalogowal i
+co przeszedl”) pokazuje liste osob, ktore uruchomily samouczek — zarowno w panelu Jiry (kazdy
+pracownik, po koncie Jira, bez logowania), jak i w rozszerzeniu przegladarki (tylko gdy wlaczono
+w nim logowanie) — wraz z liczba ukonczonych krokow i statusem. To sa dane osobowe (imie, e-mail)
+— poinformuj pracownikow, ze postep jest sledzony.
+
 ## Forge app (glowny katalog)
 
 Natywna aplikacja [Atlassian Forge](https://developer.atlassian.com/platform/forge/), ktora

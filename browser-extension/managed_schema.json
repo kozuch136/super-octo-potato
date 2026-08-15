@@ -21,6 +21,10 @@
       "type": "string",
       "title": "Adres web triggera appki Forge, ktory wymienia kod OAuth Atlassian na token (src/atlassianOAuth.js)"
     },
+    "reportUrl": {
+      "type": "string",
+      "title": "Adres web triggera appki Forge, do ktorego rozszerzenie zglasza logowanie/postep (src/onboardingReport.js), widoczny w raporcie panelu admina"
+    },
     "steps": {
       "type": "array",
       "title": "Kroki samouczka onboardingowego wdrazane centralnie przez IT (Chrome Enterprise policy)",

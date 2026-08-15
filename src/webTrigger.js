@@ -1,6 +1,5 @@
-import { fetch } from '@forge/api';
-import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { getSteps } from './steps.js';
+import { getBearerToken, isBearerValid } from './identity.js';
 
 // Publiczny endpoint odczytywany przez rozszerzenie przegladarki, zeby
 // trzymac te sama tresc samouczka co appka Forge (jedno zrodlo prawdy,
@@ -16,18 +15,9 @@ import { getSteps } from './steps.js';
 //    -> rozszerzenie musi wtedy wolac ?token=<sekret>
 //
 // 2. Prawdziwe logowanie uzytkownika (OAuth), token wysylany jako
-//    `Authorization: Bearer <token>`:
-//    - Microsoft (Entra ID): ustaw MS_OAUTH_CLIENT_ID i MS_OAUTH_TENANT_ID -
-//      wtedy token musi byc poprawnym, podpisanym JWT wydanym przez ten
-//      tenant dla tej aplikacji (weryfikacja podpisu wzgledem JWKS
-//      Microsoftu + sprawdzenie "iss"/"aud"/waznosci).
-//    - Atlassian: ustaw REQUIRE_ATLASSIAN_AUTH=true - wtedy token musi byc
-//      zywym, wazny tokenem dostepu Atlassiana (sprawdzanym wywolaniem
-//      GET https://api.atlassian.com/me). Uwaga: to potwierdza, ze token
-//      jest wazny i nalezy do zalogowanego konta Atlassian, ale NIE
-//      weryfikuje, ze zostal wydany akurat dla naszej aplikacji OAuth
-//      (Atlassian nie udostepnia do tego prostego, publicznego
-//      introspection endpointu) - dla wiekszej pewnosci polacz z SYNC_TOKEN.
+//    `Authorization: Bearer <token>` - patrz src/identity.js:
+//    - Microsoft (Entra ID): ustaw MS_OAUTH_CLIENT_ID i MS_OAUTH_TENANT_ID.
+//    - Atlassian: ustaw REQUIRE_ATLASSIAN_AUTH=true.
 //
 // Jesli skonfigurowano ktorykolwiek z powyzszych mechanizmow, endpoint
 // zaczyna wymagac autoryzacji (przestaje byc otwarty).
@@ -37,29 +27,6 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': ['GET, OPTIONS'],
   'Access-Control-Allow-Headers': ['Content-Type, Authorization'],
 };
-
-let msJwks = null;
-
-async function validateMicrosoftToken(token, clientId, tenantId) {
-  if (!msJwks) {
-    msJwks = createRemoteJWKSet(
-      new URL(`https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`)
-    );
-  }
-  await jwtVerify(token, msJwks, {
-    issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
-    audience: clientId,
-  });
-}
-
-async function validateAtlassianToken(token) {
-  const response = await fetch('https://api.atlassian.com/me', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) {
-    throw new Error(`Token Atlassian odrzucony (status ${response.status}).`);
-  }
-}
 
 async function isAuthorized(request) {
   const syncToken = process.env.SYNC_TOKEN;
@@ -81,28 +48,9 @@ async function isAuthorized(request) {
     }
   }
 
-  const authHeader =
-    request.headers?.authorization?.[0] || request.headers?.Authorization?.[0];
-  const bearerToken = authHeader?.startsWith('Bearer ')
-    ? authHeader.slice('Bearer '.length)
-    : null;
-
-  if (bearerToken && msClientId && msTenantId) {
-    try {
-      await validateMicrosoftToken(bearerToken, msClientId, msTenantId);
-      return true;
-    } catch (err) {
-      // nie jest to (poprawny) token Microsoft - sprobuj Atlassian ponizej
-    }
-  }
-
-  if (bearerToken && requireAtlassian) {
-    try {
-      await validateAtlassianToken(bearerToken);
-      return true;
-    } catch (err) {
-      // niepoprawny token Atlassian
-    }
+  const bearerToken = getBearerToken(request);
+  if (bearerToken && (await isBearerValid(bearerToken))) {
+    return true;
   }
 
   return false;

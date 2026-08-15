@@ -40,6 +40,12 @@
     }
   }
 
+  // Best-effort: brak logowania/adresu raportowania po prostu nic nie
+  // wysyla (patrz background.js -> reportEvent) - nie przerywa samouczka.
+  function reportEvent(event, stepId) {
+    chrome.runtime.sendMessage({ type: 'JOC_REPORT_EVENT', event, stepId }).catch(() => {});
+  }
+
   async function markSeen() {
     await chrome.storage.local.set({ tourSeen: true });
   }
@@ -136,13 +142,22 @@
     skipBtn.className = 'joc-btn joc-btn--subtle';
     skipBtn.type = 'button';
     skipBtn.textContent = 'Pomin';
-    skipBtn.onclick = () => finishTour();
+    skipBtn.onclick = () => {
+      reportEvent('tour_skipped');
+      finishTour();
+    };
 
     const nextBtn = document.createElement('button');
     nextBtn.className = 'joc-btn joc-btn--primary';
     nextBtn.type = 'button';
     nextBtn.textContent = index === steps.length - 1 ? 'Zakoncz' : 'Dalej';
-    nextBtn.onclick = () => goToStep(index + 1);
+    nextBtn.onclick = () => {
+      reportEvent('step_completed', step.id);
+      if (index === steps.length - 1) {
+        reportEvent('tour_completed');
+      }
+      goToStep(index + 1);
+    };
 
     actions.append(skipBtn, nextBtn);
     footer.append(progress, actions);

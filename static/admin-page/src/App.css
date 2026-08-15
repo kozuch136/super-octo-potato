@@ -4,7 +4,7 @@ body {
 }
 
 .admin-page {
-  max-width: 720px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 24px;
   display: flex;
@@ -76,4 +76,41 @@ body {
   font-size: 12px;
   color: #44546f;
   margin: 4px 0 0;
+}
+
+.report-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 4px 0 8px;
+}
+
+.report-table-wrapper {
+  overflow-x: auto;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.report-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5e6c84;
+  padding: 6px 10px;
+  border-bottom: 2px solid #dfe1e6;
+  white-space: nowrap;
+}
+
+.report-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f4f5f7;
+  vertical-align: top;
+}
+
+.report-table__muted {
+  font-size: 12px;
+  color: #7a869a;
 }

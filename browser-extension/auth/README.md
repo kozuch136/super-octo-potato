@@ -11,6 +11,12 @@ Po skonfigurowaniu logowanie robi dwie rzeczy naraz:
 2. **Zabezpieczenie synchronizacji** - token uzyskany przy logowaniu jest dolaczany jako
    `Authorization: Bearer <token>` do zapytania synchronizujacego kroki z Forge
    (`background.js` -> `syncFromForge`). Appka Forge (`../../src/webTrigger.js`) go weryfikuje.
+3. **Raport „kto sie zalogowal / co przeszedl”** - po zalogowaniu i przy kazdym kroku samouczka
+   rozszerzenie zglasza zdarzenie do appki Forge (`background.js` -> `reportEvent`, endpoint
+   `../../src/onboardingReport.js`), ktora zapisuje imie/e-mail (wyciagniete z tokenu) oraz liste
+   ukonczonych krokow. Widac to w panelu admina Jiry, sekcja „Kto sie zalogowal i co przeszedl” -
+   wymaga skonfigurowania trzeciego adresu, „Adres raportowania”, w Ustawieniach rozszerzenia
+   (patrz nizej).
 
 ## Jak to dziala technicznie
 
@@ -85,6 +91,15 @@ przechowac (kazdy moze rozpakowac `.crx` i go odczytac). Rozszerzenie robi tylko
 7. W Ustawieniach rozszerzenia wklej **Client ID** (jawny, nie sekret) oraz ten adres wymiany w
    pola Atlassian.
 
+### Raport logowania i postepu (opcjonalny, niezalezny od wyboru dostawcy)
+
+Trzecie pole w sekcji „Logowanie” - „Adres raportowania” - to adres web triggera
+`onboarding-report` (patrz `manifest.yml` w katalogu glownym), rowniez widoczny w panelu Forge
+obok pozostalych dwoch adresow. Dziala z KAZDYM skonfigurowanym dostawcem (Microsoft i/lub
+Atlassian) - nie trzeba go osobno wlaczac per dostawca. Zostawienie tego pola pustym oznacza po
+prostu brak raportu (logowanie i synchronizacja dzialaja normalnie, tylko admin nie zobaczy kto
+sie zalogowal).
+
 ## Zabezpieczenie endpointu synchronizacji tokenem logowania
 
 Domyslnie `src/webTrigger.js` w katalogu glownym jest otwarty (patrz komentarz w tym pliku).
@@ -99,13 +114,17 @@ Zeby zaczal wymagac zalogowania:
 ## Co zostalo zweryfikowane, a co nie
 
 **Zweryfikowane w tym srodowisku:**
-- Skladnia wszystkich plikow (`node --check`, bundlowanie esbuild z rozwiazywaniem importow).
+- Skladnia wszystkich plikow (`node --check`, bundlowanie esbuild z rozwiazywaniem importow),
+  wlacznie z `src/onboardingReport.js` i `src/identity.js`.
 - Manifest Forge (`manifest.yml`) wzgledem oficjalnego schematu `@forge/manifest` (pole
-  `permissions.external.fetch.backend` istnieje i przyjmuje liste domen).
+  `permissions.external.fetch.backend` istnieje i przyjmuje liste domen; `jira:issuePanel` i
+  `jira:adminPage` maja teraz ROZDZIELONE funkcje resolvera - `panelResolver` / `adminResolver` -
+  zeby operacje admina, w tym nowy raport, nie byly technicznie osiagalne z mostka panelu
+  widocznego dla kazdego pracownika).
 - Realne zaladowanie rozszerzenia (z nowym `background.js` jako modul ES, importujacym
   `auth/microsoft.js` i `auth/atlassian.js`) w prawdziwym Chromium - service worker startuje bez
   bledow, `options.html` i `popup.html` renderuja sie bez wyjatkow JS w konsoli (sprawdzone przez
-  CDP `Runtime.exceptionThrown` / `Runtime.consoleAPICalled`).
+  CDP `Runtime.exceptionThrown` / `Runtime.consoleAPICalled`), takze po dodaniu raportowania.
 
 **NIE zweryfikowane** (brak dostepu do prawdziwego konta Microsoft Entra / Atlassian w tym
 srodowisku):
@@ -118,6 +137,13 @@ srodowisku):
   rozszerzenie po prostu wraca do stanu "wymagane logowanie" i prosi o ponowne, interaktywne
   zalogowanie. Ciche odswiezanie w tle to mozliwe rozszerzenie na przyszlosc, nie jest
   zaimplementowane.
+- Raport (`getOnboardingReport` w `src/resolvers/admin.js`) uzywa `storage.query().where('key',
+  startsWith('report:'))` - API istnieje i ma taki ksztalt w zainstalowanym pakiecie
+  `@forge/storage`, ale zapytanie nie zostalo wykonane na zywym Forge Storage (brak wdrozenia).
+  Scope `read:jira-user` (potrzebny, zeby panel na widoku zgloszenia mogl pobrac wyswietlana
+  nazwe/e-mail uzytkownika do raportu) rowniez nie zostal zweryfikowany na zywo - jesli okaze sie
+  niepoprawny, `forge deploy`/runtime zwroci czytelny blad (nie cichy fail bezpieczenstwa), a
+  panel i tak dalej dziala - po prostu raport pokaze accountId zamiast imienia i nazwiska.
 
 Przed wdrozeniem na produkcje: zarejestruj prawdziwe aplikacje u obu dostawcow, skonfiguruj jedna
 osobe testowa i przejdz cala sciezke recznie (logowanie -> synchronizacja -> tour na stronie

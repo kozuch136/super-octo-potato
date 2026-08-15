@@ -82,10 +82,11 @@ repozytorium — szczegoly w `deploy/README.md`.
 
 Domyslnie rozszerzenie dziala bez logowania. Mozna to zmienic — patrz
 [`auth/README.md`](auth/README.md) — zeby: (1) samouczek uruchamial sie dopiero po zalogowaniu
-pracownika, oraz (2) synchronizacja z Forge byla zabezpieczona prawdziwym tokenem OAuth zamiast
-polegac wylacznie na tajnosci adresu URL. Dziala to z Microsoft Entra ID (Azure AD) i/lub kontem
-Atlassian, konfigurowane niezaleznie w Ustawieniach rozszerzenia (sekcja „Logowanie”) — mozna
-wlaczyc jeden dostawca, oba, lub zaden.
+pracownika, (2) synchronizacja z Forge byla zabezpieczona prawdziwym tokenem OAuth zamiast
+polegac wylacznie na tajnosci adresu URL, oraz (3) w panelu admina Jiry bylo widac, kto sie
+zalogowal i jakie kroki samouczka przeszedl. Dziala to z Microsoft Entra ID (Azure AD) i/lub
+kontem Atlassian, konfigurowane niezaleznie w Ustawieniach rozszerzenia (sekcja „Logowanie”) —
+mozna wlaczyc jeden dostawca, oba, lub zaden.
 
 ## Domena Jiry inna niz *.atlassian.net
 
