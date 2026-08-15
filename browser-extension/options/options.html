@@ -2,29 +2,28 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
-    <title>Ustawienia samouczka onboardingowego</title>
+    <title>Ustawienia samouczkow onboardingowych</title>
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
     <div class="page">
-      <h1>Kroki samouczka onboardingowego</h1>
+      <h1>Samouczki onboardingowe</h1>
       <p class="lead">
-        Zdefiniuj kroki, ktore nowi pracownicy zobacza przy pierwszej wizycie w Jirze.
-        Kazdy krok wskazuje jedno pole na stronie (przez selektor CSS) i wyjasnia, jak
-        je uzupelnic zgodnie z procedura firmy. Uzyj przycisku
-        <strong>„Zaznacz element”</strong>, aby wskazac pole klikniеciem zamiast recznie
-        wpisywac selektor.
+        Zdefiniuj samouczki, ktore pracownicy zobacza przy pierwszej wizycie na danym ekranie
+        Jiry. Kazdy krok wskazuje jedno pole na stronie (przez selektor CSS) i wyjasnia, jak je
+        uzupelnic zgodnie z procedura firmy. Uzyj przycisku <strong>„Zaznacz element”</strong>,
+        aby wskazac pole klikniеciem zamiast recznie wpisywac selektor.
       </p>
 
       <div id="managed-notice" class="notice notice--info" hidden>
-        Kroki sa obecnie wdrozone centralnie przez administratora IT (Chrome Enterprise
+        Samouczki sa obecnie wdrozone centralnie przez administratora IT (Chrome Enterprise
         policy) i nie mozna ich edytowac lokalnie.
       </div>
 
       <section class="sync-section">
         <h2>Synchronizacja z aplikacja Forge</h2>
         <p class="lead">
-          Zamiast konfigurowac kroki osobno tutaj, mozesz pobierac je automatycznie z
+          Zamiast konfigurowac samouczki osobno tutaj, mozesz pobierac je automatycznie z
           appki Forge w Jirze — jednego, wspolnego zrodla tresci. Adres znajdziesz w
           Jirze w: <strong>Ustawienia aplikacji → Ustawienia samouczka onboardingowego</strong>
           (sekcja „Synchronizacja z rozszerzeniem przegladarki”, przycisk „Kopiuj”).
@@ -44,7 +43,7 @@
       <section class="sync-section">
         <h2>Logowanie (opcjonalne)</h2>
         <p class="lead">
-          Jesli chcesz, zeby samouczek dzialal tylko po zalogowaniu sie pracownika (Microsoft
+          Jesli chcesz, zeby samouczki dzialaly tylko po zalogowaniu sie pracownika (Microsoft
           Entra ID lub Atlassian), skonfiguruj tu dane aplikacji OAuth. Zostawienie tych pol
           pustymi oznacza, ze logowanie nie jest wymagane — tak dziala rozszerzenie domyslnie.
           Szczegoly rejestracji aplikacji: <code>auth/README.md</code>.
@@ -86,10 +85,10 @@
 
       <div id="status" class="notice" hidden></div>
 
-      <div id="steps" class="steps"></div>
+      <div id="tours" class="tours"></div>
 
       <div class="row">
-        <button id="add-step" class="btn btn--subtle">Dodaj krok</button>
+        <button id="add-tour" class="btn btn--subtle">Dodaj samouczek</button>
       </div>
 
       <div class="row row--space-between">
@@ -101,6 +100,39 @@
         <button id="save" class="btn btn--primary">Zapisz</button>
       </div>
     </div>
+
+    <template id="tour-template">
+      <div class="tour" data-tour>
+        <div class="tour__header">
+          <button type="button" class="tour__toggle" data-toggle>
+            <span data-toggle-icon>▾</span> <span data-title-preview>(bez tytulu)</span>
+          </button>
+          <div class="row">
+            <button type="button" class="btn btn--subtle" data-up>W gore</button>
+            <button type="button" class="btn btn--subtle" data-down>W dol</button>
+            <button type="button" class="btn btn--danger" data-remove-tour>Usun samouczek</button>
+          </div>
+        </div>
+        <div class="tour__body" data-body>
+          <div class="field">
+            <label>Identyfikator samouczka</label>
+            <input type="text" data-field="id" />
+          </div>
+          <div class="field">
+            <label>Tytul</label>
+            <input type="text" data-field="title" />
+          </div>
+          <div class="field">
+            <label>Opis</label>
+            <input type="text" data-field="description" />
+          </div>
+          <div class="steps" data-steps></div>
+          <div class="row">
+            <button type="button" class="btn btn--subtle" data-add-step>Dodaj krok</button>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <template id="step-template">
       <div class="step" data-step>

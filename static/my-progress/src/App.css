@@ -22,9 +22,23 @@ body {
   padding: 16px;
 }
 
-.progress-card h3 {
+.progress-card h4 {
   font-size: 14px;
   margin: 0 0 10px;
+}
+
+.source-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.source-section__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #5e6c84;
+  text-transform: uppercase;
+  margin: 0;
 }
 
 .progress-card__bar-wrapper {

@@ -1,4 +1,4 @@
-import { getSteps } from './steps.js';
+import { getTours } from './tours.js';
 import { getBearerToken, isBearerValid } from './identity.js';
 
 // Publiczny endpoint odczytywany przez rozszerzenie przegladarki, zeby
@@ -70,10 +70,10 @@ export async function handler(request) {
     };
   }
 
-  const steps = await getSteps();
+  const tours = await getTours();
   return {
     statusCode: 200,
     headers: { ...CORS_HEADERS, 'Content-Type': ['application/json'] },
-    body: JSON.stringify({ steps }),
+    body: JSON.stringify({ tours }),
   };
 }

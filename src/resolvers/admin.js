@@ -1,6 +1,6 @@
 import Resolver from '@forge/resolver';
 import { webTrigger, storage, startsWith } from '@forge/api';
-import { getSteps, setSteps } from '../steps.js';
+import { getTours, setTours } from '../tours.js';
 
 // Resolver uzywany WYLACZNIE przez strone administracyjna
 // (jira:adminPage, patrz manifest.yml -> resolver: {function: adminResolver}).
@@ -14,16 +14,16 @@ import { getSteps, setSteps } from '../steps.js';
 
 const resolver = new Resolver();
 
-resolver.define('getOnboardingSteps', async () => {
-  return getSteps();
+resolver.define('getOnboardingTours', async () => {
+  return getTours();
 });
 
-resolver.define('saveOnboardingSteps', async (req) => {
-  const { steps } = req.payload;
-  if (!Array.isArray(steps)) {
-    throw new Error('steps musi byc tablica');
+resolver.define('saveOnboardingTours', async (req) => {
+  const { tours } = req.payload;
+  if (!Array.isArray(tours)) {
+    throw new Error('tours musi byc tablica');
   }
-  await setSteps(steps);
+  await setTours(tours);
   return { ok: true };
 });
 
@@ -43,6 +43,10 @@ resolver.define('getSyncInfo', async () => {
 // rozszerzenia przegladarki (report:extension:*, patrz
 // src/onboardingReport.js). Klucze sa enumerowane po prefiksie - patrz
 // @forge/storage query API (storage.query().where('key', startsWith(...))).
+// Kazdy rekord niesie zagniezdzony postep per samouczek (`tours: {tourId:
+// {completedStepIds, tourOutcome, tourCompletedAt}}`) - definicje
+// samouczkow (tytul, liczba krokow) dolaczamy osobno, zeby UI mogl
+// wyliczyc "X / Y" bez dodatkowego wywolania.
 resolver.define('getOnboardingReport', async () => {
   const records = [];
   let cursor;
@@ -63,7 +67,12 @@ resolver.define('getOnboardingReport', async () => {
     cursor = result.nextCursor;
   }
 
-  return records.map(({ key, value }) => ({ key, ...value }));
+  const tours = await getTours();
+
+  return {
+    tours: tours.map((t) => ({ id: t.id, title: t.title, totalSteps: t.steps.length })),
+    records: records.map(({ key, value }) => ({ key, ...value })),
+  };
 });
 
 export const handler = resolver.getDefinitions();

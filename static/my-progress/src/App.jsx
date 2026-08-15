@@ -10,42 +10,48 @@ const PROVIDER_LABELS = {
 };
 
 const OUTCOME_LABELS = {
-  completed: 'Ukonczony',
-  skipped: 'Pominiety',
+  completed: 'ukonczony',
+  skipped: 'pominiety',
 };
 
-function formatDate(timestamp) {
-  if (!timestamp) return null;
-  return new Date(timestamp).toLocaleString('pl-PL');
-}
-
-function ProgressCard({ title, record, totalSteps, stepHeadings }) {
-  if (!record) {
-    return null;
-  }
-  const completed = record.completedStepIds || [];
-  const percent = totalSteps ? Math.round((completed.length / totalSteps) * 100) : 0;
+function ProgressCard({ tour, progress }) {
+  const completed = progress.completedStepIds || [];
+  const percent = tour.totalSteps ? Math.round((completed.length / tour.totalSteps) * 100) : 0;
 
   return (
     <div className="progress-card">
-      <h3>{title}</h3>
+      <h4>{tour.title}</h4>
       <div className="progress-card__bar-wrapper">
         <div className="progress-card__bar" style={{ width: `${percent}%` }} />
       </div>
       <p className="progress-card__summary">
-        {completed.length} / {totalSteps} krokow ({percent}%)
-        {record.tourOutcome ? ` — ${OUTCOME_LABELS[record.tourOutcome] || record.tourOutcome}` : ''}
+        {completed.length} / {tour.totalSteps} krokow ({percent}%)
+        {progress.tourOutcome
+          ? ` — ${OUTCOME_LABELS[progress.tourOutcome] || progress.tourOutcome}`
+          : ''}
       </p>
-      {completed.length > 0 && (
-        <ul className="progress-card__steps">
-          {completed.map((stepId) => (
-            <li key={stepId}>{stepHeadings[stepId] || stepId}</li>
-          ))}
-        </ul>
-      )}
-      <p className="progress-card__muted">
-        Ostatnia aktywnosc: {formatDate(record.lastActivityAt) || '—'}
-      </p>
+    </div>
+  );
+}
+
+function SourceSection({ title, record, tours }) {
+  if (!record) {
+    return null;
+  }
+  const entries = tours
+    .map((tour) => ({ tour, progress: record.tours?.[tour.id] }))
+    .filter((entry) => entry.progress);
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="source-section">
+      <h3 className="source-section__title">{title}</h3>
+      {entries.map(({ tour, progress }) => (
+        <ProgressCard key={tour.id} tour={tour} progress={progress} />
+      ))}
     </div>
   );
 }
@@ -74,34 +80,33 @@ export default function App() {
     return null;
   }
 
-  const hasAnyProgress = Boolean(data.panel || data.extension);
+  const tours = data.tours || [];
+  const hasAnyProgress = Boolean(
+    Object.keys(data.panel?.tours || {}).length || Object.keys(data.extension?.tours || {}).length
+  );
 
   return (
     <div className="my-progress">
-      <h2>Moj postep w samouczku onboardingowym</h2>
+      <h2>Moj postep w samouczkach onboardingowych</h2>
 
       {!hasAnyProgress && (
         <SectionMessage appearance="information">
           <p>
-            Jeszcze nie rozpoczales samouczka. Otworz dowolne zgloszenie w Jirze — panel
-            „Przewodnik dla nowych pracownikow” uruchomi go automatycznie przy pierwszej wizycie.
-            Jesli firma korzysta tez z rozszerzenia przegladarki i wymaga w nim logowania, Twoj
-            postep z niego pojawi sie tutaj po zalogowaniu.
+            Jeszcze nie rozpoczales zadnego samouczka. Otworz dowolne zgloszenie w Jirze — panel
+            „Przewodnik dla nowych pracownikow” uruchomi pierwszy z nich automatycznie przy
+            pierwszej wizycie. Pozostale samouczki (tablica, wyszukiwanie, komentowanie, workflow)
+            uruchamiaja sie automatycznie w rozszerzeniu przegladarki, gdy trafisz na wlasciwy
+            ekran. Jesli firma wymaga w rozszerzeniu logowania, Twoj postep z niego pojawi sie
+            tutaj po zalogowaniu.
           </p>
         </SectionMessage>
       )}
 
-      <ProgressCard
-        title="Panel w Jirze"
-        record={data.panel}
-        totalSteps={data.totalSteps}
-        stepHeadings={data.stepHeadings}
-      />
-      <ProgressCard
+      <SourceSection title="Panel w Jirze" record={data.panel} tours={tours} />
+      <SourceSection
         title={data.extension ? PROVIDER_LABELS[data.extension.provider] : ''}
         record={data.extension}
-        totalSteps={data.totalSteps}
-        stepHeadings={data.stepHeadings}
+        tours={tours}
       />
     </div>
   );

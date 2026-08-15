@@ -1,6 +1,6 @@
 const statusEl = document.getElementById('status');
-const hintEl = document.getElementById('hint');
-const startBtn = document.getElementById('start');
+const toursListEl = document.getElementById('tours-list');
+const tourRowTemplate = document.getElementById('tour-row-template');
 const optionsBtn = document.getElementById('options');
 const tourSection = document.getElementById('tour-section');
 
@@ -38,7 +38,7 @@ async function refreshAuth() {
     signoutBtn.hidden = false;
     tourSection.hidden = false;
   } else {
-    authStatusEl.textContent = 'Zaloguj sie, aby uruchomic samouczek onboardingowy.';
+    authStatusEl.textContent = 'Zaloguj sie, aby uruchomic samouczki onboardingowe.';
     authSignedOutEl.hidden = false;
     signoutBtn.hidden = true;
     tourSection.hidden = true;
@@ -46,21 +46,43 @@ async function refreshAuth() {
   return { signedIn: Boolean(auth) };
 }
 
+function renderTours(tours, tab) {
+  toursListEl.innerHTML = '';
+  tours.forEach((tour) => {
+    const node = tourRowTemplate.content.firstElementChild.cloneNode(true);
+    node.querySelector('.tour-row__title').textContent = tour.title;
+    node.querySelector('.tour-row__status').textContent = tour.seen ? 'obejrzany' : 'nowy';
+    const restartBtn = node.querySelector('.tour-row__restart');
+    restartBtn.disabled = !tab;
+    restartBtn.addEventListener('click', async () => {
+      if (!tab) return;
+      await chrome.tabs.sendMessage(tab.id, { type: 'JOC_RESTART_TOUR', tourId: tour.id });
+      window.close();
+    });
+    toursListEl.appendChild(node);
+  });
+}
+
 async function refreshStatus() {
   const tab = await getActiveJiraTab();
   if (!tab) {
-    statusEl.textContent = 'Otworz stronę Jiry, aby zobaczyc status.';
-    startBtn.disabled = true;
+    statusEl.textContent = 'Otworz stronę Jiry, aby zobaczyc samouczki.';
+    toursListEl.innerHTML = '';
     return;
   }
-  startBtn.disabled = false;
   try {
     const response = await chrome.tabs.sendMessage(tab.id, { type: 'JOC_GET_STATUS' });
-    statusEl.textContent = response?.seen
-      ? 'Samouczek zostal juz obejrzany.'
-      : 'Samouczek pojawi sie automatycznie przy nastepnej okazji.';
+    const tours = response?.tours || [];
+    if (tours.length === 0) {
+      statusEl.textContent = 'Brak skonfigurowanych samouczkow.';
+      toursListEl.innerHTML = '';
+      return;
+    }
+    statusEl.textContent = 'Dostepne samouczki:';
+    renderTours(tours, tab);
   } catch (err) {
     statusEl.textContent = 'Odswiez strone Jiry, aby wlaczyc rozszerzenie.';
+    toursListEl.innerHTML = '';
   }
 }
 
@@ -82,16 +104,6 @@ signinAtlassianBtn.addEventListener('click', () => signIn('atlassian'));
 signoutBtn.addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'JOC_SIGN_OUT' });
   await refreshAuth();
-});
-
-startBtn.addEventListener('click', async () => {
-  const tab = await getActiveJiraTab();
-  if (!tab) {
-    hintEl.textContent = 'To dziala tylko na stronach Jiry.';
-    return;
-  }
-  await chrome.tabs.sendMessage(tab.id, { type: 'JOC_RESTART_TOUR' });
-  window.close();
 });
 
 optionsBtn.addEventListener('click', () => {

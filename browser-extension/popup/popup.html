@@ -21,11 +21,19 @@
 
       <div id="tour-section">
         <p id="status" class="status">Sprawdzanie statusu...</p>
-        <button id="start" class="btn btn--primary">Uruchom ponownie samouczek</button>
-        <button id="options" class="btn btn--subtle">Ustawienia kroków</button>
-        <p id="hint" class="hint"></p>
+        <div id="tours-list"></div>
+        <button id="options" class="btn btn--subtle">Ustawienia samouczków</button>
       </div>
     </div>
+
+    <template id="tour-row-template">
+      <div class="tour-row">
+        <span class="tour-row__title"></span>
+        <span class="tour-row__status"></span>
+        <button type="button" class="btn btn--subtle tour-row__restart">Uruchom</button>
+      </div>
+    </template>
+
     <script src="popup.js"></script>
   </body>
 </html>

@@ -2,7 +2,7 @@ import { storage } from '@forge/api';
 import { getBearerToken, identifyBearer } from './identity.js';
 
 // Endpoint, do ktorego rozszerzenie przegladarki zglasza zdarzenia
-// logowania i postepu w samouczku (patrz browser-extension/background.js
+// logowania i postepu w samouczkach (patrz browser-extension/background.js
 // -> reportEvent). W przeciwienstwie do src/webTrigger.js (odczyt, moze
 // zostac otwarty) ten endpoint ZAWSZE wymaga poprawnego tokenu logowania,
 // bo bez niego nie ma czego raportowac - i tak wlasnie chce admin: "kto
@@ -26,21 +26,38 @@ function reportKey(provider, subjectId) {
   return `report:extension:${provider}:${subjectId}`;
 }
 
-async function upsertReport(key, patch) {
+function emptyTourProgress() {
+  return { completedStepIds: [], tourOutcome: null, tourCompletedAt: null };
+}
+
+async function upsertReport(key, identity, { event, tourId, stepId }) {
   const existing = (await storage.get(key)) || {
     firstSeenAt: Date.now(),
-    completedStepIds: [],
-    tourCompletedAt: null,
-    tourOutcome: null,
+    tours: {},
   };
-  const stepIds = new Set([
-    ...(existing.completedStepIds || []),
-    ...(patch.completedStepIds || []),
-  ]);
+
+  const tours = { ...(existing.tours || {}) };
+  if (tourId) {
+    const tourProgress = tours[tourId] || emptyTourProgress();
+    if (event === 'step_completed' && stepId) {
+      tourProgress.completedStepIds = Array.from(
+        new Set([...(tourProgress.completedStepIds || []), stepId])
+      );
+    }
+    if (event === 'tour_completed' || event === 'tour_skipped') {
+      tourProgress.tourCompletedAt = Date.now();
+      tourProgress.tourOutcome = event === 'tour_completed' ? 'completed' : 'skipped';
+    }
+    tours[tourId] = tourProgress;
+  }
+
   const merged = {
     ...existing,
-    ...patch,
-    completedStepIds: Array.from(stepIds),
+    source: 'extension',
+    provider: identity.provider,
+    name: identity.name,
+    email: identity.email,
+    tours,
     lastActivityAt: Date.now(),
   };
   await storage.set(key, merged);
@@ -71,23 +88,8 @@ export async function handler(request) {
     return json(400, { error: 'Nieprawidlowy JSON w zapytaniu.' });
   }
 
-  const { event, stepId } = payload;
+  const { event, tourId, stepId } = payload;
   const key = reportKey(identity.provider, identity.subjectId);
-
-  const patch = {
-    source: 'extension',
-    provider: identity.provider,
-    name: identity.name,
-    email: identity.email,
-  };
-  if (event === 'step_completed' && stepId) {
-    patch.completedStepIds = [stepId];
-  }
-  if (event === 'tour_completed' || event === 'tour_skipped') {
-    patch.tourCompletedAt = Date.now();
-    patch.tourOutcome = event === 'tour_completed' ? 'completed' : 'skipped';
-  }
-
-  const record = await upsertReport(key, patch);
+  const record = await upsertReport(key, identity, { event, tourId, stepId });
   return json(200, { ok: true, record });
 }

@@ -5,18 +5,20 @@ dostawcy (patrz Ustawienia rozszerzenia -> sekcja „Logowanie”). Bez konfigur
 dziala dokladnie tak jak wczesniej - bez zadnego logowania.
 
 Po skonfigurowaniu logowanie robi dwie rzeczy naraz:
-1. **Brama dostepu** - samouczek na stronie Jiry (`content/content.js`) nie uruchomi sie, dopoki
+1. **Brama dostepu** - samouczki na stronie Jiry (`content/content.js`) nie uruchomia sie, dopoki
    pracownik sie nie zaloguje. Widac to po ikonie w prawym dolnym rogu strony: `?` = mozna
-   uruchomic, `🔒` = trzeba sie najpierw zalogowac (klik otwiera popup rozszerzenia).
+   otworzyc liste samouczkow, `🔒` = trzeba sie najpierw zalogowac (klik otwiera popup
+   rozszerzenia).
 2. **Zabezpieczenie synchronizacji** - token uzyskany przy logowaniu jest dolaczany jako
-   `Authorization: Bearer <token>` do zapytania synchronizujacego kroki z Forge
+   `Authorization: Bearer <token>` do zapytania synchronizujacego samouczki z Forge
    (`background.js` -> `syncFromForge`). Appka Forge (`../../src/webTrigger.js`) go weryfikuje.
-3. **Raport „kto sie zalogowal / co przeszedl”** - po zalogowaniu i przy kazdym kroku samouczka
-   rozszerzenie zglasza zdarzenie do appki Forge (`background.js` -> `reportEvent`, endpoint
-   `../../src/onboardingReport.js`), ktora zapisuje imie/e-mail (wyciagniete z tokenu) oraz liste
-   ukonczonych krokow. Widac to w panelu admina Jiry, sekcja „Kto sie zalogowal i co przeszedl” -
-   wymaga skonfigurowania trzeciego adresu, „Adres raportowania”, w Ustawieniach rozszerzenia
-   (patrz nizej).
+3. **Raport „kto sie zalogowal / co przeszedl”** - po zalogowaniu i przy kazdym kroku kazdego
+   samouczka rozszerzenie zglasza zdarzenie (z `tourId` i `stepId`) do appki Forge
+   (`background.js` -> `reportEvent`, endpoint `../../src/onboardingReport.js`), ktora zapisuje
+   imie/e-mail (wyciagniete z tokenu) oraz postep osobno dla kazdego samouczka. Widac to w panelu
+   admina Jiry, sekcja „Kto sie zalogowal i co przeszedl” (osobna kolumna na kazdy z pieciu
+   samouczkow) - wymaga skonfigurowania trzeciego adresu, „Adres raportowania”, w Ustawieniach
+   rozszerzenia (patrz nizej).
 
 ## Jak to dziala technicznie
 

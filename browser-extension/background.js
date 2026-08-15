@@ -51,7 +51,7 @@ function getBearerToken(auth) {
 // Logowanie jest opcjonalne: jesli admin nie skonfigurowal zadnego z
 // dostawcow (patrz isAuthRequired), rozszerzenie dziala jak dotychczas,
 // bez logowania. Skonfigurowanie choc jednego wlacza wymog zalogowania
-// zarowno do uruchomienia samouczka (patrz content/content.js), jak i do
+// zarowno do uruchomienia samouczkow (patrz content/content.js), jak i do
 // samej synchronizacji z Forge (token dolaczany jako Authorization: Bearer).
 
 async function getAuthState() {
@@ -87,10 +87,10 @@ async function signOut() {
 
 // --- Raportowanie zdarzen (kto sie zalogowal / co przeszedl) ---
 // Wysylane "best effort" - brak polaczenia albo brak skonfigurowanego
-// reportUrl nie przerywa dzialania samouczka, tylko nie trafia do raportu
+// reportUrl nie przerywa dzialania samouczkow, tylko nie trafia do raportu
 // w panelu admina Jiry.
 
-async function reportEvent(event, stepId) {
+async function reportEvent(event, tourId, stepId) {
   const [config, auth] = await Promise.all([getConfig(), getAuthState()]);
   if (!config.reportUrl || !auth) {
     return { ok: false, error: 'Brak logowania lub adresu raportowania.' };
@@ -103,7 +103,7 @@ async function reportEvent(event, stepId) {
     const response = await fetch(config.reportUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ event, stepId }),
+      body: JSON.stringify({ event, tourId, stepId }),
     });
     if (!response.ok) {
       return { ok: false, error: `Serwer zwrocil status ${response.status}.` };
@@ -114,7 +114,7 @@ async function reportEvent(event, stepId) {
   }
 }
 
-// --- Synchronizacja krokow z Forge ---
+// --- Synchronizacja samouczkow z Forge ---
 
 async function syncFromForge(explicitUrl) {
   const config = await getConfig();
@@ -139,11 +139,11 @@ async function syncFromForge(explicitUrl) {
       return { ok: false, error: `Serwer zwrocil status ${response.status}.` };
     }
     const data = await response.json();
-    if (!Array.isArray(data.steps)) {
-      return { ok: false, error: 'Nieoczekiwana odpowiedz serwera (brak "steps").' };
+    if (!Array.isArray(data.tours)) {
+      return { ok: false, error: 'Nieoczekiwana odpowiedz serwera (brak "tours").' };
     }
-    await chrome.storage.local.set({ steps: data.steps, lastSyncAt: Date.now() });
-    return { ok: true, steps: data.steps };
+    await chrome.storage.local.set({ tours: data.tours, lastSyncAt: Date.now() });
+    return { ok: true, tours: data.tours };
   } catch (err) {
     return { ok: false, error: err.message || 'Blad sieci.' };
   }
@@ -153,17 +153,17 @@ async function maybeAutoSync() {
   const config = await getConfig();
   if (!config.syncUrl) return;
   if (isAuthRequired(config) && !(await getAuthState())) return;
-  const { steps } = await chrome.storage.local.get('steps');
-  if (!steps || steps.length === 0) {
+  const { tours } = await chrome.storage.local.get('tours');
+  if (!tours || tours.length === 0) {
     await syncFromForge(config.syncUrl);
   }
 }
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   if (reason === 'install') {
-    const existing = await chrome.storage.local.get('steps');
-    if (existing.steps === undefined) {
-      await chrome.storage.local.set({ steps: [] });
+    const existing = await chrome.storage.local.get('tours');
+    if (existing.tours === undefined) {
+      await chrome.storage.local.set({ tours: [] });
     }
   }
   chrome.alarms.create(ALARM_NAME, { periodInMinutes: SYNC_PERIOD_MINUTES });
@@ -212,7 +212,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message.type === 'JOC_REPORT_EVENT') {
-    reportEvent(message.event, message.stepId).then(sendResponse);
+    reportEvent(message.event, message.tourId, message.stepId).then(sendResponse);
     return true;
   }
   if (message.type === 'JOC_OPEN_PAGE') {

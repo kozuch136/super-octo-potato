@@ -1,10 +1,10 @@
 # super-octo-potato — Onboarding dla nowych pracownikow w Jirze
 
 Dwa alternatywne wdrozenia jednego pomyslu: prosty odpowiednik Digital Adoption Platform (jak
-WalkMe) skupiony na konkretnym problemie — nowi pracownicy nie wiedza, jak poprawnie
-zalozyc/uzupelnic ticket zgodnie z procedura firmy. Wybierz podejscie zalezne od tego, czy
-wazniejsza jest dystrybucja jako oficjalna appka Jiry, czy realne podswietlanie prawdziwych pol
-formularza:
+WalkMe) z pieciu przykladowymi samouczkami dla nowych pracownikow — zakladanie zgloszenia,
+praca z tablica, wyszukiwanie zgloszen, komentowanie i wspolpraca, zmiana statusu (workflow).
+Wybierz podejscie zalezne od tego, czy wazniejsza jest dystrybucja jako oficjalna appka Jiry, czy
+realne podswietlanie prawdziwych pol formularza na kazdym z tych ekranow:
 
 | | [`/` (Forge app)](#forge-app-glowny-katalog) | [`browser-extension/`](browser-extension/README.md) |
 |---|---|---|
@@ -33,10 +33,10 @@ Forge (zamiast polegac tylko na tajnosci adresu URL) — patrz
 [`browser-extension/auth/README.md`](browser-extension/auth/README.md).
 
 **Raport „kto sie zalogowal i co przeszedl”:** panel admina w Jirze (sekcja „Kto sie zalogowal i
-co przeszedl”) pokazuje liste osob, ktore uruchomily samouczek — zarowno w panelu Jiry (kazdy
-pracownik, po koncie Jira, bez logowania), jak i w rozszerzeniu przegladarki (tylko gdy wlaczono
-w nim logowanie) — wraz z liczba ukonczonych krokow i statusem. To sa dane osobowe (imie, e-mail)
-— poinformuj pracownikow, ze postep jest sledzony.
+co przeszedl”) pokazuje liste osob, ktore uruchomily ktorykolwiek samouczek — zarowno w panelu
+Jiry (kazdy pracownik, po koncie Jira, bez logowania), jak i w rozszerzeniu przegladarki (tylko
+gdy wlaczono w nim logowanie) — z osobna kolumna postepu dla kazdego z pieciu samouczkow. To sa
+dane osobowe (imie, e-mail) — poinformuj pracownikow, ze postep jest sledzony.
 
 ## Forge app (glowny katalog)
 
@@ -48,17 +48,21 @@ z procedura firmy.
 ## Co robi aplikacja
 
 - **Panel na widoku zgloszenia** (`jira:issuePanel`) — przy pierwszym wejsciu uzytkownika
-  uruchamia interaktywny samouczek typu "spotlight": krok po kroku podswietla kolejne pola
-  (priorytet, komponent, opis, przypisanie...) i wyjasnia, jak je uzupelnic zgodnie z wewnetrzna
-  procedura. Uzytkownik moze tez recznie uruchomic samouczek ponownie w dowolnym momencie.
+  uruchamia interaktywny samouczek typu "spotlight" dla pierwszego z pieciu samouczkow
+  („Zakladanie zgloszenia”): krok po kroku podswietla kolejne pola (priorytet, komponent, opis,
+  przypisanie...) i wyjasnia, jak je uzupelnic zgodnie z wewnetrzna procedura. Uzytkownik moze tez
+  recznie uruchomic samouczek ponownie w dowolnym momencie. Pozostale cztery samouczki (tablica,
+  wyszukiwanie, komentowanie, workflow) nie maja naturalnego miejsca w panelu Forge (dotycza innych
+  ekranow niz widok zgloszenia) — dzialaja wylacznie w rozszerzeniu przegladarki, patrz nizej.
 - **Strona administracyjna** (`jira:adminPage`, tylko dla adminow Jiry) — administrator definiuje
-  tresc kazdego kroku (naglowek + opis) tak, aby odzwierciedlala realna procedure firmy, bez zmian
-  w kodzie, oraz widzi zbiorczy raport kto ukonczyl samouczek.
+  tresc wszystkich pieciu samouczkow (tytul + kroki, kazdy krok to naglowek + opis) tak, aby
+  odzwierciedlaly realna procedure firmy, bez zmian w kodzie, oraz widzi zbiorczy raport kto co
+  ukonczyl.
 - **„Moj postep” w ustawieniach osobistych** (`jira:personalSettingsPage`) — kazdy pracownik moze
-  sam sprawdzic swoj wlasny postep (ktore kroki ukonczyl, w panelu Jiry i/lub w rozszerzeniu
+  sam sprawdzic swoj wlasny postep w kazdym z samouczkow (w panelu Jiry i/lub w rozszerzeniu
   przegladarki, jesli z niego korzysta) bez czekania na admina.
-- **Stan per uzytkownik** — Forge Storage API zapamietuje, czy dany uzytkownik (`accountId`) juz
-  widzial samouczek, wiec pojawia sie automatycznie tylko raz.
+- **Stan per uzytkownik i per samouczek** — Forge Storage API zapamietuje, czy dany uzytkownik
+  (`accountId`) juz widzial dany samouczek, wiec kazdy pojawia sie automatycznie tylko raz.
 
 ## Ograniczenie architektoniczne (wazne)
 
@@ -74,7 +78,7 @@ a nie klikala za uzytkownika w prawdziwe pola.
 
 ```
 manifest.yml                     — definicja modulow Forge (panel, admin, "moj postep", web triggery)
-src/steps.js                     — wspolny model danych krokow
+src/tours.js                     — wspolny model danych: lista samouczkow, kazdy ze swoimi krokami
 src/identity.js                  — wspolna weryfikacja tokenow logowania (Microsoft/Atlassian)
 src/resolvers/panel.js           — backend dla jira:issuePanel + jira:personalSettingsPage
 src/resolvers/admin.js           — backend WYLACZNIE dla jira:adminPage (osobna funkcja Forge)
@@ -104,27 +108,29 @@ forge install          # podpiecie appki do wybranej instancji Jira Cloud
 
 Do iteracyjnej pracy nad frontendem mozna uzyc `forge tunnel` zamiast `forge deploy`.
 
-## Konfiguracja tresci samouczka
+## Konfiguracja tresci samouczkow
 
 Po instalacji appki w Jirze: **Ustawienia aplikacji → Ustawienia samouczka onboardingowego**
-(strona globalna dodana przez te appke). Tam mozna dodawac, usuwac, zmieniac kolejnosc i edytowac
-tresc poszczegolnych krokow — zmiany sa widoczne natychmiast we wszystkich panelach na widokach
-zgloszen.
+(strona admina dodana przez te appke). Tam mozna dodawac/usuwac cale samouczki, a w kazdym z nich
+dodawac, usuwac, zmieniac kolejnosc i edytowac tresc poszczegolnych krokow — zmiany sa widoczne
+natychmiast w panelu na widoku zgloszenia (pierwszy samouczek) i po najblizszej synchronizacji w
+rozszerzeniu przegladarki (wszystkie piec).
 
 ## Wlasny postep pracownika
 
 Kazdy pracownik moze sam sprawdzic swoj postep bez pytania admina: strona „Moj postep w
 onboardingu” (`jira:personalSettingsPage`) w ustawieniach osobistych Jiry (klik na awatar w
 prawym gornym rogu → ustawienia osobiste — dokladna nazwa/miejsce w menu zalezy od wersji Jira
-Cloud, **nie zweryfikowane na zywo** w tym srodowisku). Pokazuje pasek postepu i liste ukonczonych
-krokow — osobno dla panelu w Jirze i (jesli uzywane) dla rozszerzenia przegladarki. Resolver
+Cloud, **nie zweryfikowane na zywo** w tym srodowisku). Pokazuje osobna karte z paskiem postepu dla kazdego
+samouczka, ktory pracownik zaczal — osobno dla panelu w Jirze i (jesli uzywane) dla rozszerzenia
+przegladarki. Resolver
 (`getMyProgress` w `src/resolvers/panel.js`) zwraca wylacznie dane wywolujacego uzytkownika —
 `accountId` pochodzi z kontekstu Forge, nie z zadnego parametru, wiec nie da sie tym resolverem
 podejrzec cudzego postepu.
 
 ## Jedno zrodlo prawdy: synchronizacja Forge → rozszerzenie
 
-Zamiast konfigurowac te same kroki osobno w appce Forge i osobno w rozszerzeniu przegladarki,
+Zamiast konfigurowac te same samouczki osobno w appce Forge i osobno w rozszerzeniu przegladarki,
 mozna skonfigurowac je **raz**, w panelu admina Jiry, i podpiac rozszerzenie pod ten sam zestaw:
 
 1. Wdroz appke (`forge deploy` + `forge install`) — dopiero po instalacji Forge generuje adres
@@ -132,14 +138,17 @@ mozna skonfigurowac je **raz**, w panelu admina Jiry, i podpiac rozszerzenie pod
 2. W Jirze otworz **Ustawienia aplikacji → Ustawienia samouczka onboardingowego**. Na gorze
    strony jest sekcja „Synchronizacja z rozszerzeniem przegladarki” z gotowym adresem URL i
    przyciskiem „Kopiuj”.
-3. W kazdym stepie dodaj tez **Selektor CSS** (pole widoczne pod naglowkiem „Identyfikator
-   pola”) — to jedyna czesc konfiguracji, ktorej uzywa wylacznie rozszerzenie (wskazuje
-   prawdziwe pole na stronie Jiry do podswietlenia). Panel Forge to pole ignoruje.
+3. W kazdym kroku kazdego samouczka dodaj tez **Selektor CSS** (pole widoczne pod naglowkiem
+   „Identyfikator pola”) — to jedyna czesc konfiguracji, ktorej uzywa wylacznie rozszerzenie
+   (wskazuje prawdziwe pole na stronie Jiry do podswietlenia). Panel Forge to pole ignoruje (uzywa
+   go tylko dla pierwszego samouczka, i to po `id`, nie po `selector`).
 4. Wklej skopiowany adres w rozszerzeniu: **Ustawienia rozszerzenia → Synchronizacja z aplikacja
    Forge → wklej adres → „Zapisz adres” → „Synchronizuj teraz”**.
-5. Od tej pory rozszerzenie samo odswieza kroki w tle co ~6h (`chrome.alarms`), a kazda zmiana
-   zapisana w panelu Forge trafia do rozszerzenia po najblizszej synchronizacji (albo od razu po
-   recznym kliknieciu „Synchronizuj teraz”).
+5. Od tej pory rozszerzenie samo odswieza wszystkie samouczki w tle co ~6h (`chrome.alarms`), a
+   kazda zmiana zapisana w panelu Forge trafia do rozszerzenia po najblizszej synchronizacji (albo
+   od razu po recznym kliknieciu „Synchronizuj teraz”). Rozszerzenie samo wykrywa, na ktorym
+   ekranie jest uzytkownik i automatycznie uruchamia wlasciwy samouczek (patrz
+   `browser-extension/README.md`).
 
 **Dystrybucja w calej organizacji bez konfiguracji per uzytkownik:** jesli IT wdraza rozszerzenie
 centralnie przez Chrome Enterprise policy, wystarczy w polityce ustawic `syncUrl` na ten sam adres

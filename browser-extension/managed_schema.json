@@ -3,7 +3,7 @@
   "properties": {
     "syncUrl": {
       "type": "string",
-      "title": "Adres Forge web trigger (Jira -> Ustawienia samouczka onboardingowego), z ktorego rozszerzenie ma pobierac kroki. Wyklucza sie ze statycznym polem steps ponizej."
+      "title": "Adres Forge web trigger (Jira -> Ustawienia samouczka onboardingowego), z ktorego rozszerzenie ma pobierac samouczki. Wyklucza sie ze statycznym polem tours ponizej."
     },
     "msClientId": {
       "type": "string",
@@ -25,19 +25,30 @@
       "type": "string",
       "title": "Adres web triggera appki Forge, do ktorego rozszerzenie zglasza logowanie/postep (src/onboardingReport.js), widoczny w raporcie panelu admina"
     },
-    "steps": {
+    "tours": {
       "type": "array",
-      "title": "Kroki samouczka onboardingowego wdrazane centralnie przez IT (Chrome Enterprise policy)",
+      "title": "Samouczki onboardingowe wdrazane centralnie przez IT (Chrome Enterprise policy)",
       "items": {
         "type": "object",
         "properties": {
           "id": { "type": "string" },
-          "selector": {
-            "type": "string",
-            "title": "Selektor CSS elementu na stronie Jiry, ktory ma zostac podswietlony"
-          },
-          "heading": { "type": "string" },
-          "description": { "type": "string" }
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "selector": {
+                  "type": "string",
+                  "title": "Selektor CSS elementu na stronie Jiry, ktory ma zostac podswietlony"
+                },
+                "heading": { "type": "string" },
+                "description": { "type": "string" }
+              }
+            }
+          }
         }
       }
     }

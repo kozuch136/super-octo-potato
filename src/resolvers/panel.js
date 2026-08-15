@@ -1,17 +1,28 @@
 import Resolver from '@forge/resolver';
 import { storage, requestJira, route, startsWith } from '@forge/api';
-import { getSteps } from '../steps.js';
+import { getTours } from '../tours.js';
 
 // Resolver uzywany WYLACZNIE przez panel na widoku zgloszenia oraz stronie
 // "Moj postep" w ustawieniach osobistych (jira:issuePanel,
 // jira:personalSettingsPage - obie sa "zwyklym" kontekstem pracownika, wiec
 // bezpiecznie dziela ten sam backend). Operacje administracyjne (zapis
-// krokow, zbiorczy raport wszystkich osob) sa na osobnej funkcji
+// samouczkow, zbiorczy raport wszystkich osob) sa na osobnej funkcji
 // (src/resolvers/admin.js) i nie sa stad osiagalne, nawet gdyby ktos
 // probowal wywolac je recznie z mostka jednego z tych dwoch modulow.
+//
+// Panel Forge (jira:issuePanel) pokazuje wylacznie pierwszy samouczek
+// ("ticket-creation") - to jedyny, ktory ma naturalne miejsce na widoku
+// zgloszenia. Pozostale samouczki (tablica, wyszukiwanie, komentowanie,
+// workflow) dzialaja tylko w rozszerzeniu przegladarki (patrz
+// browser-extension/content/content.js), ale ich postep i tak trafia do
+// tego samego raportu, wiec strona "Moj postep" pokazuje je wszystkie.
 
-const seenKey = (accountId) => `onboarding-seen-${accountId}`;
+const seenKey = (accountId, tourId) => `onboarding-seen-${accountId}-${tourId}`;
 const reportKey = (accountId) => `report:panel:jira:${accountId}`;
+
+function emptyTourProgress() {
+  return { completedStepIds: [], tourOutcome: null, tourCompletedAt: null };
+}
 
 const resolver = new Resolver();
 
@@ -28,25 +39,28 @@ async function fetchUserProfile(accountId) {
   return { name: null, email: null };
 }
 
-resolver.define('getOnboardingSteps', async () => {
-  return getSteps();
+resolver.define('getOnboardingTours', async () => {
+  return getTours();
 });
 
 resolver.define('getOnboardingState', async (req) => {
   const { accountId } = req.context;
-  const seen = await storage.get(seenKey(accountId));
+  const { tourId } = req.payload || {};
+  const seen = await storage.get(seenKey(accountId, tourId));
   return { seen: Boolean(seen) };
 });
 
 resolver.define('markOnboardingSeen', async (req) => {
   const { accountId } = req.context;
-  await storage.set(seenKey(accountId), true);
+  const { tourId } = req.payload || {};
+  await storage.set(seenKey(accountId, tourId), true);
   return { ok: true };
 });
 
 resolver.define('resetOnboardingState', async (req) => {
   const { accountId } = req.context;
-  await storage.delete(seenKey(accountId));
+  const { tourId } = req.payload || {};
+  await storage.delete(seenKey(accountId, tourId));
   return { ok: true };
 });
 
@@ -56,8 +70,8 @@ resolver.define('resetOnboardingState', async (req) => {
 // uzytkownika, ale wymaga scope'u read:jira-user w manifest.yml).
 resolver.define('recordStepSeen', async (req) => {
   const { accountId } = req.context;
-  const { stepId } = req.payload || {};
-  if (!stepId) {
+  const { tourId, stepId } = req.payload || {};
+  if (!tourId || !stepId) {
     return { ok: false };
   }
 
@@ -66,9 +80,7 @@ resolver.define('recordStepSeen', async (req) => {
     source: 'jira-panel',
     provider: 'jira',
     firstSeenAt: Date.now(),
-    completedStepIds: [],
-    tourCompletedAt: null,
-    tourOutcome: null,
+    tours: {},
   };
 
   let { name, email } = existing;
@@ -78,31 +90,45 @@ resolver.define('recordStepSeen', async (req) => {
     email = profile.email;
   }
 
-  const merged = {
+  const tours = { ...(existing.tours || {}) };
+  const tourProgress = tours[tourId] || emptyTourProgress();
+  tourProgress.completedStepIds = Array.from(
+    new Set([...(tourProgress.completedStepIds || []), stepId])
+  );
+  tours[tourId] = tourProgress;
+
+  await storage.set(key, {
     ...existing,
     name,
     email,
-    completedStepIds: Array.from(new Set([...(existing.completedStepIds || []), stepId])),
+    tours,
     lastActivityAt: Date.now(),
-  };
-  await storage.set(key, merged);
+  });
   return { ok: true };
 });
 
 resolver.define('recordTourFinished', async (req) => {
   const { accountId } = req.context;
-  const { outcome } = req.payload || {}; // 'completed' | 'skipped'
+  const { tourId, outcome } = req.payload || {}; // outcome: 'completed' | 'skipped'
+  if (!tourId) {
+    return { ok: false };
+  }
   const key = reportKey(accountId);
   const existing = (await storage.get(key)) || {
     source: 'jira-panel',
     provider: 'jira',
     firstSeenAt: Date.now(),
-    completedStepIds: [],
+    tours: {},
   };
+  const tours = { ...(existing.tours || {}) };
+  const tourProgress = tours[tourId] || emptyTourProgress();
+  tourProgress.tourCompletedAt = Date.now();
+  tourProgress.tourOutcome = outcome || 'completed';
+  tours[tourId] = tourProgress;
+
   await storage.set(key, {
     ...existing,
-    tourCompletedAt: Date.now(),
-    tourOutcome: outcome || 'completed',
+    tours,
     lastActivityAt: Date.now(),
   });
   return { ok: true };
@@ -111,7 +137,8 @@ resolver.define('recordTourFinished', async (req) => {
 // Widok "Moj postep" (jira:personalSettingsPage) - kazdy pracownik widzi
 // WYLACZNIE swoje wlasne dane (accountId pochodzi z kontekstu Forge, nie z
 // payloadu, wiec nie da sie podejrzec cudzego postepu przez ten resolver).
-// Laczy dwa zrodla:
+// Laczy dwa zrodla, po jednym rekordzie kazde (z zagniezdzonym postepem per
+// samouczek):
 // 1. Panel Jiry - bezposredni odczyt po tym samym accountId.
 // 2. Rozszerzenie przegladarki, zalogowane przez Atlassian - `account_id`
 //    zwracany przez api.atlassian.com/me to TEN SAM globalny identyfikator
@@ -122,8 +149,8 @@ resolver.define('recordTourFinished', async (req) => {
 resolver.define('getMyProgress', async (req) => {
   const { accountId } = req.context;
 
-  const [steps, panel, atlassianExtension] = await Promise.all([
-    getSteps(),
+  const [tours, panel, atlassianExtension] = await Promise.all([
+    getTours(),
     storage.get(reportKey(accountId)),
     storage.get(`report:extension:atlassian:${accountId}`),
   ]);
@@ -159,8 +186,7 @@ resolver.define('getMyProgress', async (req) => {
   }
 
   return {
-    totalSteps: steps.length,
-    stepHeadings: Object.fromEntries(steps.map((s) => [s.id, s.heading])),
+    tours: tours.map((t) => ({ id: t.id, title: t.title, totalSteps: t.steps.length })),
     panel: panel || null,
     extension: atlassianExtension || microsoftExtension || null,
   };

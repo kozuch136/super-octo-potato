@@ -5,7 +5,7 @@ body {
 }
 
 .popup {
-  width: 260px;
+  width: 300px;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -64,4 +64,29 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+#tours-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tour-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f4f5f7;
+}
+
+.tour-row__title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tour-row__status {
+  font-size: 11px;
+  color: #7a869a;
 }

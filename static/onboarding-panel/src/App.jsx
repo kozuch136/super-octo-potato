@@ -10,6 +10,12 @@ import {
 } from '@atlaskit/onboarding';
 import './App.css';
 
+// Panel pokazuje wylacznie pierwszy samouczek ("ticket-creation") - to
+// jedyny, ktory ma naturalne miejsce na widoku zgloszenia. Pozostale
+// samouczki (tablica, wyszukiwanie, komentowanie, workflow) dotycza innych
+// ekranow Jiry i dzialaja tylko w rozszerzeniu przegladarki - patrz
+// browser-extension/content/content.js oraz README.md.
+//
 // Panel renderuje uproszczona makiete pol zgloszenia i prowadzi po niej
 // samouczek typu spotlight. Rzeczywisty formularz zakladania ticketu
 // zyje poza tym iframe'em (ograniczenie Forge Custom UI), wiec makieta
@@ -25,18 +31,24 @@ const FieldMock = ({ name, label, children }) => (
 );
 
 export default function App() {
-  const [steps, setSteps] = useState([]);
+  const [tour, setTour] = useState(null);
   const [seen, setSeen] = useState(true);
   const [activeStep, setActiveStep] = useState(-1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([invoke('getOnboardingSteps'), invoke('getOnboardingState')])
-      .then(([loadedSteps, state]) => {
-        setSteps(loadedSteps);
+    invoke('getOnboardingTours')
+      .then(async (tours) => {
+        const ticketTour = tours.find((t) => t.id === 'ticket-creation') || tours[0] || null;
+        setTour(ticketTour);
+        if (!ticketTour) {
+          setLoading(false);
+          return;
+        }
+        const state = await invoke('getOnboardingState', { tourId: ticketTour.id });
         setSeen(state.seen);
         setLoading(false);
-        if (!state.seen && loadedSteps.length > 0) {
+        if (!state.seen && ticketTour.steps.length > 0) {
           setActiveStep(0);
         }
       })
@@ -46,30 +58,35 @@ export default function App() {
   const finishTour = async (outcome = 'completed') => {
     setActiveStep(-1);
     setSeen(true);
-    await Promise.all([invoke('markOnboardingSeen'), invoke('recordTourFinished', { outcome })]);
+    await Promise.all([
+      invoke('markOnboardingSeen', { tourId: tour.id }),
+      invoke('recordTourFinished', { tourId: tour.id, outcome }),
+    ]);
   };
 
   const restartTour = async () => {
-    await invoke('resetOnboardingState');
+    await invoke('resetOnboardingState', { tourId: tour.id });
     setSeen(false);
     setActiveStep(0);
   };
 
   const next = () => {
-    const currentStep = steps[activeStep];
+    const currentStep = tour.steps[activeStep];
     if (currentStep) {
-      invoke('recordStepSeen', { stepId: currentStep.id }).catch(() => {});
+      invoke('recordStepSeen', { tourId: tour.id, stepId: currentStep.id }).catch(() => {});
     }
-    if (activeStep < steps.length - 1) {
+    if (activeStep < tour.steps.length - 1) {
       setActiveStep(activeStep + 1);
     } else {
       finishTour('completed');
     }
   };
 
-  if (loading) {
+  if (loading || !tour) {
     return null;
   }
+
+  const steps = tour.steps;
 
   return (
     <SpotlightManager>

@@ -1,5 +1,6 @@
-const stepsContainer = document.getElementById('steps');
-const template = document.getElementById('step-template');
+const toursContainer = document.getElementById('tours');
+const tourTemplate = document.getElementById('tour-template');
+const stepTemplate = document.getElementById('step-template');
 const statusEl = document.getElementById('status');
 const managedNoticeEl = document.getElementById('managed-notice');
 const syncUrlInput = document.getElementById('sync-url');
@@ -25,6 +26,7 @@ const AUTH_CONFIG_KEYS = [
 
 let managed = false;
 let pickingRow = null;
+let nextTempId = 0;
 
 function showStatus(message, kind) {
   statusEl.hidden = false;
@@ -43,8 +45,8 @@ function formatSyncInfo(lastSyncAt, extra) {
   syncInfoEl.textContent = parts.join(' ');
 }
 
-function rowFromStep(step) {
-  const node = template.content.firstElementChild.cloneNode(true);
+function rowFromStep(step, stepsContainer) {
+  const node = stepTemplate.content.firstElementChild.cloneNode(true);
   node.querySelector('[data-field="id"]').value = step.id || '';
   node.querySelector('[data-field="selector"]').value = step.selector || '';
   node.querySelector('[data-field="heading"]').value = step.heading || '';
@@ -72,17 +74,82 @@ function rowFromStep(step) {
   return node;
 }
 
-function renderSteps(steps) {
-  stepsContainer.innerHTML = '';
-  steps.forEach((step) => stepsContainer.appendChild(rowFromStep(step)));
+function rowFromTour(tour) {
+  const node = tourTemplate.content.firstElementChild.cloneNode(true);
+  const stepsContainer = node.querySelector('[data-steps]');
+  const titlePreview = node.querySelector('[data-title-preview]');
+  const toggleIcon = node.querySelector('[data-toggle-icon]');
+  const body = node.querySelector('[data-body]');
+
+  node.querySelector('[data-field="id"]').value = tour.id || '';
+  node.querySelector('[data-field="title"]').value = tour.title || '';
+  node.querySelector('[data-field="description"]').value = tour.description || '';
+  titlePreview.textContent = tour.title || '(bez tytulu)';
+
+  (tour.steps || []).forEach((step) => {
+    stepsContainer.appendChild(rowFromStep(step, stepsContainer));
+  });
+
+  node.querySelector('[data-field="title"]').addEventListener('input', (e) => {
+    titlePreview.textContent = e.target.value || '(bez tytulu)';
+  });
+
+  node.querySelector('[data-toggle]').addEventListener('click', () => {
+    const collapsed = body.style.display === 'none';
+    body.style.display = collapsed ? '' : 'none';
+    toggleIcon.textContent = collapsed ? '▾' : '▸';
+  });
+
+  node.querySelector('[data-add-step]').addEventListener('click', () => {
+    stepsContainer.appendChild(
+      rowFromStep({ id: '', selector: '', heading: '', description: '' }, stepsContainer)
+    );
+  });
+
+  node.querySelector('[data-remove-tour]').addEventListener('click', () => {
+    node.remove();
+  });
+  node.querySelector('[data-up]').addEventListener('click', () => {
+    const prev = node.previousElementSibling;
+    if (prev) toursContainer.insertBefore(node, prev);
+  });
+  node.querySelector('[data-down]').addEventListener('click', () => {
+    const next = node.nextElementSibling;
+    if (next) toursContainer.insertBefore(next, node);
+  });
+
+  if (managed) {
+    node.querySelectorAll('input, textarea, button').forEach((el) => {
+      el.disabled = true;
+    });
+  }
+
+  return node;
 }
 
-function collectSteps() {
-  return Array.from(stepsContainer.querySelectorAll('[data-step]')).map((node) => ({
-    id: node.querySelector('[data-field="id"]').value.trim(),
-    selector: node.querySelector('[data-field="selector"]').value.trim(),
-    heading: node.querySelector('[data-field="heading"]').value.trim(),
-    description: node.querySelector('[data-field="description"]').value.trim(),
+function renderTours(tours) {
+  toursContainer.innerHTML = '';
+  tours.forEach((tour, index) => {
+    const node = rowFromTour(tour);
+    if (index > 0) {
+      node.querySelector('[data-body]').style.display = 'none';
+      node.querySelector('[data-toggle-icon]').textContent = '▸';
+    }
+    toursContainer.appendChild(node);
+  });
+}
+
+function collectTours() {
+  return Array.from(toursContainer.querySelectorAll('[data-tour]')).map((tourNode) => ({
+    id: tourNode.querySelector('[data-field="id"]').value.trim(),
+    title: tourNode.querySelector('[data-field="title"]').value.trim(),
+    description: tourNode.querySelector('[data-field="description"]').value.trim(),
+    steps: Array.from(tourNode.querySelectorAll('[data-step]')).map((node) => ({
+      id: node.querySelector('[data-field="id"]').value.trim(),
+      selector: node.querySelector('[data-field="selector"]').value.trim(),
+      heading: node.querySelector('[data-field="heading"]').value.trim(),
+      description: node.querySelector('[data-field="description"]').value.trim(),
+    })),
   }));
 }
 
@@ -137,7 +204,7 @@ async function requestSync(url) {
     const result = await chrome.runtime.sendMessage({ type: 'JOC_SYNC_NOW', url });
     if (result && result.ok) {
       if (!managed) {
-        renderSteps(result.steps);
+        renderTours(result.tours);
       }
       const { lastSyncAt } = await chrome.storage.local.get('lastSyncAt');
       formatSyncInfo(lastSyncAt, 'Zsynchronizowano pomyslnie.');
@@ -210,41 +277,45 @@ async function load() {
   await loadSyncSection();
   await loadAuthConfigSection();
 
-  const managedResult = await chrome.storage.managed.get('steps').catch(() => ({}));
-  if (managedResult && Array.isArray(managedResult.steps) && managedResult.steps.length) {
+  const managedResult = await chrome.storage.managed.get('tours').catch(() => ({}));
+  if (managedResult && Array.isArray(managedResult.tours) && managedResult.tours.length) {
     managed = true;
     managedNoticeEl.hidden = false;
-    document.getElementById('add-step').disabled = true;
+    document.getElementById('add-tour').disabled = true;
     document.getElementById('save').disabled = true;
     document.getElementById('import').disabled = true;
-    renderSteps(managedResult.steps);
+    renderTours(managedResult.tours);
     return;
   }
-  const local = await chrome.storage.local.get('steps');
-  renderSteps(Array.isArray(local.steps) ? local.steps : []);
+  const local = await chrome.storage.local.get('tours');
+  renderTours(Array.isArray(local.tours) ? local.tours : []);
 }
 
-document.getElementById('add-step').addEventListener('click', () => {
-  stepsContainer.appendChild(
-    rowFromStep({ id: '', selector: '', heading: '', description: '' })
-  );
+document.getElementById('add-tour').addEventListener('click', () => {
+  const node = rowFromTour({
+    id: `tour-${Date.now()}-${nextTempId++}`,
+    title: '',
+    description: '',
+    steps: [],
+  });
+  toursContainer.appendChild(node);
 });
 
 document.getElementById('save').addEventListener('click', async () => {
-  const steps = collectSteps();
-  await chrome.storage.local.set({ steps });
-  showStatus('Zapisano kroki samouczka.', 'success');
+  const tours = collectTours();
+  await chrome.storage.local.set({ tours });
+  showStatus('Zapisano samouczki.', 'success');
 });
 
 document.getElementById('export').addEventListener('click', () => {
-  const steps = collectSteps();
-  const blob = new Blob([JSON.stringify({ steps }, null, 2)], {
+  const tours = collectTours();
+  const blob = new Blob([JSON.stringify({ tours }, null, 2)], {
     type: 'application/json',
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'jira-onboarding-steps.json';
+  a.download = 'jira-onboarding-tours.json';
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -261,12 +332,12 @@ document.getElementById('import-file').addEventListener('change', async (event) 
   try {
     const text = await file.text();
     const data = JSON.parse(text);
-    const steps = Array.isArray(data) ? data : data.steps;
-    if (!Array.isArray(steps)) {
+    const tours = Array.isArray(data) ? data : data.tours;
+    if (!Array.isArray(tours)) {
       throw new Error('Nieprawidlowy format pliku.');
     }
-    renderSteps(steps);
-    showStatus('Zaimportowano kroki. Kliknij „Zapisz”, aby je zachowac.', 'success');
+    renderTours(tours);
+    showStatus('Zaimportowano samouczki. Kliknij „Zapisz”, aby je zachowac.', 'success');
   } catch (err) {
     showStatus('Nie udalo sie zaimportowac pliku JSON.', 'error');
   } finally {

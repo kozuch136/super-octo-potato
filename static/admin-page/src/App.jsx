@@ -13,6 +13,12 @@ const newStep = () => ({
   heading: '',
   description: '',
 });
+const newTour = () => ({
+  id: `tour-${Date.now()}-${nextTempId++}`,
+  title: '',
+  description: '',
+  steps: [],
+});
 
 function CopyableUrl({ label, url }) {
   const [copyStatus, setCopyStatus] = useState(null);
@@ -54,10 +60,10 @@ function SyncPanel() {
       <p>
         Wklej pierwszy adres w Ustawieniach rozszerzenia przegladarki
         (sekcja „Synchronizacja z aplikacja Forge”), aby rozszerzenie
-        automatycznie pobieralo te same kroki, ktore konfigurujesz tutaj -
+        automatycznie pobieralo te same samouczki, ktore konfigurujesz tutaj -
         bez recznego przepisywania tresci w dwoch miejscach.
       </p>
-      <CopyableUrl label="Adres synchronizacji krokow" url={info?.url} />
+      <CopyableUrl label="Adres synchronizacji samouczkow" url={info?.url} />
       <p>
         Drugi adres jest potrzebny tylko, jesli w rozszerzeniu wlaczysz
         opcjonalne logowanie przez Atlassian (sekcja „Logowanie” w
@@ -85,8 +91,8 @@ const PROVIDER_LABELS = {
 };
 
 const OUTCOME_LABELS = {
-  completed: 'Ukonczony',
-  skipped: 'Pominiety',
+  completed: 'ukonczony',
+  skipped: 'pominiety',
 };
 
 function formatDate(timestamp) {
@@ -94,18 +100,21 @@ function formatDate(timestamp) {
   return new Date(timestamp).toLocaleString('pl-PL');
 }
 
-function ReportPanel({ totalSteps }) {
-  const [records, setRecords] = useState(null);
+function ReportPanel() {
+  const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
   const load = () => {
     setError(null);
     invoke('getOnboardingReport')
-      .then((loaded) => setRecords(loaded))
+      .then(setData)
       .catch(() => setError('Nie udalo sie wczytac raportu.'));
   };
 
   useEffect(load, []);
+
+  const tours = data?.tours || [];
+  const records = data?.records || [];
 
   return (
     <SectionMessage title="Kto sie zalogowal i co przeszedl" appearance="information">
@@ -114,22 +123,23 @@ function ReportPanel({ totalSteps }) {
         logowania, identyfikowany po koncie Jira) oraz z rozszerzenia przegladarki
         (tylko jesli wlaczono w nim logowanie Microsoft/Atlassian - patrz sekcja
         powyzej). To sa dane osobowe (imie, e-mail) - upewnij sie, ze pracownicy
-        wiedza, ze postep w samouczku jest sledzony.
+        wiedza, ze postep w samouczkach jest sledzony.
       </p>
       <div className="report-panel__actions">
         <Button onClick={load}>Odswiez</Button>
       </div>
       {error && <p className="sync-panel__status">{error}</p>}
-      {records && records.length === 0 && <p>Jeszcze nikt nie uruchomil samouczka.</p>}
-      {records && records.length > 0 && (
+      {data && records.length === 0 && <p>Jeszcze nikt nie uruchomil zadnego samouczka.</p>}
+      {data && records.length > 0 && (
         <div className="report-table-wrapper">
           <table className="report-table">
             <thead>
               <tr>
                 <th>Osoba</th>
                 <th>Zrodlo</th>
-                <th>Postep</th>
-                <th>Status</th>
+                {tours.map((t) => (
+                  <th key={t.id}>{t.title}</th>
+                ))}
                 <th>Ostatnia aktywnosc</th>
               </tr>
             </thead>
@@ -141,11 +151,25 @@ function ReportPanel({ totalSteps }) {
                     <div className="report-table__muted">{record.email || record.key}</div>
                   </td>
                   <td>{PROVIDER_LABELS[record.provider] || record.provider}</td>
-                  <td>
-                    {(record.completedStepIds || []).length}
-                    {totalSteps ? ` / ${totalSteps}` : ''}
-                  </td>
-                  <td>{OUTCOME_LABELS[record.tourOutcome] || 'W trakcie'}</td>
+                  {tours.map((t) => {
+                    const progress = record.tours?.[t.id];
+                    if (!progress) {
+                      return (
+                        <td key={t.id} className="report-table__muted">
+                          —
+                        </td>
+                      );
+                    }
+                    const completed = (progress.completedStepIds || []).length;
+                    return (
+                      <td key={t.id}>
+                        {completed} / {t.totalSteps}
+                        {progress.tourOutcome
+                          ? ` (${OUTCOME_LABELS[progress.tourOutcome] || progress.tourOutcome})`
+                          : ''}
+                      </td>
+                    );
+                  })}
                   <td>{formatDate(record.lastActivityAt)}</td>
                 </tr>
               ))}
@@ -157,51 +181,173 @@ function ReportPanel({ totalSteps }) {
   );
 }
 
+function TourEditor({ tour, index, tourCount, onChange, onRemove, onMove }) {
+  const [expanded, setExpanded] = useState(index === 0);
+
+  const updateField = (field, value) => onChange({ ...tour, [field]: value });
+
+  const updateStep = (stepIndex, field, value) => {
+    const steps = tour.steps.map((s, i) => (i === stepIndex ? { ...s, [field]: value } : s));
+    onChange({ ...tour, steps });
+  };
+
+  const removeStep = (stepIndex) => {
+    onChange({ ...tour, steps: tour.steps.filter((_, i) => i !== stepIndex) });
+  };
+
+  const moveStep = (stepIndex, direction) => {
+    const target = stepIndex + direction;
+    if (target < 0 || target >= tour.steps.length) return;
+    const steps = [...tour.steps];
+    [steps[stepIndex], steps[target]] = [steps[target], steps[stepIndex]];
+    onChange({ ...tour, steps });
+  };
+
+  const addStep = () => {
+    onChange({ ...tour, steps: [...tour.steps, newStep()] });
+  };
+
+  return (
+    <div className="tour-editor">
+      <div className="tour-editor__header">
+        <button
+          type="button"
+          className="tour-editor__toggle"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? '▾' : '▸'} {tour.title || '(bez tytulu)'} ({tour.steps.length}{' '}
+          {tour.steps.length === 1 ? 'krok' : 'krokow'})
+        </button>
+        <div className="row">
+          <Button onClick={() => onMove(-1)} isDisabled={index === 0}>
+            W gore
+          </Button>
+          <Button onClick={() => onMove(1)} isDisabled={index === tourCount - 1}>
+            W dol
+          </Button>
+          <Button appearance="danger" onClick={onRemove}>
+            Usun samouczek
+          </Button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="tour-editor__body">
+          <div className="step-editor__row">
+            <label>Identyfikator samouczka</label>
+            <Textfield value={tour.id} onChange={(e) => updateField('id', e.target.value)} />
+          </div>
+          <div className="step-editor__row">
+            <label>Tytul</label>
+            <Textfield value={tour.title} onChange={(e) => updateField('title', e.target.value)} />
+          </div>
+          <div className="step-editor__row">
+            <label>Opis (widoczny w rozszerzeniu i raporcie)</label>
+            <Textfield
+              value={tour.description ?? ''}
+              onChange={(e) => updateField('description', e.target.value)}
+            />
+          </div>
+
+          <div className="steps-list">
+            {tour.steps.map((step, stepIndex) => (
+              <div className="step-editor" key={step.id}>
+                <div className="step-editor__row">
+                  <label>Identyfikator pola (np. priority)</label>
+                  <Textfield
+                    value={step.id}
+                    onChange={(e) => updateStep(stepIndex, 'id', e.target.value)}
+                  />
+                </div>
+                <div className="step-editor__row">
+                  <label>Selektor CSS (dla rozszerzenia przegladarki)</label>
+                  <Textfield
+                    value={step.selector ?? ''}
+                    placeholder='np. [data-testid*="priority-field"]'
+                    onChange={(e) => updateStep(stepIndex, 'selector', e.target.value)}
+                  />
+                </div>
+                <div className="step-editor__row">
+                  <label>Naglowek kroku</label>
+                  <Textfield
+                    value={step.heading}
+                    onChange={(e) => updateStep(stepIndex, 'heading', e.target.value)}
+                  />
+                </div>
+                <div className="step-editor__row">
+                  <label>Opis / wskazowka</label>
+                  <TextArea
+                    value={step.description}
+                    onChange={(e) => updateStep(stepIndex, 'description', e.target.value)}
+                  />
+                </div>
+                <div className="step-editor__actions">
+                  <Button onClick={() => moveStep(stepIndex, -1)} isDisabled={stepIndex === 0}>
+                    W gore
+                  </Button>
+                  <Button
+                    onClick={() => moveStep(stepIndex, 1)}
+                    isDisabled={stepIndex === tour.steps.length - 1}
+                  >
+                    W dol
+                  </Button>
+                  <Button appearance="danger" onClick={() => removeStep(stepIndex)}>
+                    Usun krok
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="row">
+            <Button onClick={addStep}>Dodaj krok</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
-  const [steps, setSteps] = useState([]);
+  const [tours, setTours] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState(null);
 
   useEffect(() => {
-    invoke('getOnboardingSteps')
+    invoke('getOnboardingTours')
       .then((loaded) => {
-        setSteps(loaded);
+        setTours(loaded);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  const updateStep = (index, field, value) => {
-    setSteps((current) =>
-      current.map((step, i) => (i === index ? { ...step, [field]: value } : step))
-    );
+  const updateTour = (index, updatedTour) => {
+    setTours((current) => current.map((t, i) => (i === index ? updatedTour : t)));
   };
 
-  const removeStep = (index) => {
-    setSteps((current) => current.filter((_, i) => i !== index));
+  const removeTour = (index) => {
+    setTours((current) => current.filter((_, i) => i !== index));
   };
 
-  const moveStep = (index, direction) => {
-    setSteps((current) => {
+  const moveTour = (index, direction) => {
+    setTours((current) => {
       const target = index + direction;
-      if (target < 0 || target >= current.length) {
-        return current;
-      }
+      if (target < 0 || target >= current.length) return current;
       const copy = [...current];
       [copy[index], copy[target]] = [copy[target], copy[index]];
       return copy;
     });
   };
 
-  const addStep = () => {
-    setSteps((current) => [...current, newStep()]);
+  const addTour = () => {
+    setTours((current) => [...current, newTour()]);
   };
 
   const save = async () => {
     setStatus(null);
     try {
-      await invoke('saveOnboardingSteps', { steps });
-      setStatus({ type: 'success', message: 'Zapisano kroki samouczka.' });
+      await invoke('saveOnboardingTours', { tours });
+      setStatus({ type: 'success', message: 'Zapisano samouczki.' });
     } catch (err) {
       setStatus({ type: 'error', message: 'Nie udalo sie zapisac zmian.' });
     }
@@ -213,21 +359,20 @@ export default function App() {
 
   return (
     <div className="admin-page">
-      <h2>Kroki samouczka onboardingowego</h2>
+      <h2>Samouczki onboardingowe</h2>
       <SectionMessage appearance="information">
         <p>
-          Zdefiniuj kroki, ktore nowi pracownicy zobacza w panelu na widoku
-          zgloszenia przy pierwszym logowaniu. Kazdy krok odpowiada polu
-          ticketu i powinien opisywac procedure obowiazujaca w Twojej firmie.
-          Pole „Selektor CSS” jest uzywane wylacznie przez rozszerzenie
-          przegladarki (patrz sekcja synchronizacji nizej) - panel w Jirze go
-          ignoruje.
+          Zdefiniuj samouczki, ktore pracownicy zobacza przy pierwszej wizycie na danym
+          ekranie Jiry. Pierwszy samouczek („ticket-creation”) pokazuje sie tez w panelu
+          na widoku zgloszenia (jego mock-up pol) — pozostale dzialaja wylacznie w
+          rozszerzeniu przegladarki, ktore realnie podswietla pola na danym ekranie.
+          Pole „Selektor CSS” kazdego kroku jest uzywane wylacznie przez rozszerzenie.
         </p>
       </SectionMessage>
 
       <SyncPanel />
 
-      <ReportPanel totalSteps={steps.length} />
+      <ReportPanel />
 
       {status && (
         <SectionMessage appearance={status.type === 'success' ? 'success' : 'error'}>
@@ -235,58 +380,22 @@ export default function App() {
         </SectionMessage>
       )}
 
-      <div className="steps-list">
-        {steps.map((step, index) => (
-          <div className="step-editor" key={step.id}>
-            <div className="step-editor__row">
-              <label>Identyfikator pola (np. priority)</label>
-              <Textfield
-                value={step.id}
-                onChange={(e) => updateStep(index, 'id', e.target.value)}
-              />
-            </div>
-            <div className="step-editor__row">
-              <label>Selektor CSS (dla rozszerzenia przegladarki)</label>
-              <Textfield
-                value={step.selector ?? ''}
-                placeholder='np. [data-testid*="priority-field"]'
-                onChange={(e) => updateStep(index, 'selector', e.target.value)}
-              />
-            </div>
-            <div className="step-editor__row">
-              <label>Naglowek kroku</label>
-              <Textfield
-                value={step.heading}
-                onChange={(e) => updateStep(index, 'heading', e.target.value)}
-              />
-            </div>
-            <div className="step-editor__row">
-              <label>Opis / wskazowka</label>
-              <TextArea
-                value={step.description}
-                onChange={(e) => updateStep(index, 'description', e.target.value)}
-              />
-            </div>
-            <div className="step-editor__actions">
-              <Button onClick={() => moveStep(index, -1)} isDisabled={index === 0}>
-                W gore
-              </Button>
-              <Button
-                onClick={() => moveStep(index, 1)}
-                isDisabled={index === steps.length - 1}
-              >
-                W dol
-              </Button>
-              <Button appearance="danger" onClick={() => removeStep(index)}>
-                Usun krok
-              </Button>
-            </div>
-          </div>
+      <div className="tours-list">
+        {tours.map((tour, index) => (
+          <TourEditor
+            key={tour.id}
+            tour={tour}
+            index={index}
+            tourCount={tours.length}
+            onChange={(t) => updateTour(index, t)}
+            onRemove={() => removeTour(index)}
+            onMove={(dir) => moveTour(index, dir)}
+          />
         ))}
       </div>
 
       <div className="admin-page__actions">
-        <Button onClick={addStep}>Dodaj krok</Button>
+        <Button onClick={addTour}>Dodaj samouczek</Button>
         <Button appearance="primary" onClick={save}>
           Zapisz
         </Button>

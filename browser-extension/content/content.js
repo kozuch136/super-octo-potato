@@ -1,34 +1,50 @@
 (function () {
   const PAD = 6;
+  const TOUR_DETECT_TIMEOUT_MS = 2500;
+  const STEP_WAIT_TIMEOUT_MS = 4000;
 
-  let steps = [];
+  let tours = [];
+  let currentTour = null;
   let currentIndex = -1;
   let backdropEl = null;
   let tooltipEl = null;
   let repositionHandler = null;
   let launcherEl = null;
+  let tourMenuEl = null;
 
   let pickerActive = false;
   let pickerBannerEl = null;
   let pickerHoverEl = null;
 
-  async function loadSteps() {
+  async function loadTours() {
     let managed = {};
     try {
-      managed = await chrome.storage.managed.get('steps');
+      managed = await chrome.storage.managed.get('tours');
     } catch (err) {
       managed = {};
     }
-    if (managed && Array.isArray(managed.steps) && managed.steps.length) {
-      return managed.steps;
+    if (managed && Array.isArray(managed.tours) && managed.tours.length) {
+      return managed.tours;
     }
-    const local = await chrome.storage.local.get('steps');
-    return Array.isArray(local.steps) ? local.steps : [];
+    const local = await chrome.storage.local.get('tours');
+    return Array.isArray(local.tours) ? local.tours : [];
   }
 
-  async function isSeen() {
-    const { tourSeen } = await chrome.storage.local.get('tourSeen');
-    return Boolean(tourSeen);
+  async function getSeenTourIds() {
+    const { seenTourIds } = await chrome.storage.local.get('seenTourIds');
+    return Array.isArray(seenTourIds) ? seenTourIds : [];
+  }
+
+  async function markTourSeen(tourId) {
+    const seen = await getSeenTourIds();
+    if (!seen.includes(tourId)) {
+      await chrome.storage.local.set({ seenTourIds: [...seen, tourId] });
+    }
+  }
+
+  async function resetTourSeen(tourId) {
+    const seen = await getSeenTourIds();
+    await chrome.storage.local.set({ seenTourIds: seen.filter((id) => id !== tourId) });
   }
 
   async function getAuthGate() {
@@ -42,15 +58,12 @@
 
   // Best-effort: brak logowania/adresu raportowania po prostu nic nie
   // wysyla (patrz background.js -> reportEvent) - nie przerywa samouczka.
-  function reportEvent(event, stepId) {
-    chrome.runtime.sendMessage({ type: 'JOC_REPORT_EVENT', event, stepId }).catch(() => {});
-  }
-
-  async function markSeen() {
-    await chrome.storage.local.set({ tourSeen: true });
+  function reportEvent(event, tourId, stepId) {
+    chrome.runtime.sendMessage({ type: 'JOC_REPORT_EVENT', event, tourId, stepId }).catch(() => {});
   }
 
   function safeQuery(selector) {
+    if (!selector) return null;
     try {
       return document.querySelector(selector);
     } catch (err) {
@@ -133,7 +146,7 @@
 
     const progress = document.createElement('span');
     progress.className = 'joc-tooltip__progress';
-    progress.textContent = `${index + 1} / ${steps.length}`;
+    progress.textContent = `${index + 1} / ${currentTour.steps.length}`;
 
     const actions = document.createElement('div');
     actions.className = 'joc-tooltip__actions';
@@ -143,18 +156,18 @@
     skipBtn.type = 'button';
     skipBtn.textContent = 'Pomin';
     skipBtn.onclick = () => {
-      reportEvent('tour_skipped');
-      finishTour();
+      reportEvent('tour_skipped', currentTour.id);
+      finishTour('skipped');
     };
 
     const nextBtn = document.createElement('button');
     nextBtn.className = 'joc-btn joc-btn--primary';
     nextBtn.type = 'button';
-    nextBtn.textContent = index === steps.length - 1 ? 'Zakoncz' : 'Dalej';
+    nextBtn.textContent = index === currentTour.steps.length - 1 ? 'Zakoncz' : 'Dalej';
     nextBtn.onclick = () => {
-      reportEvent('step_completed', step.id);
-      if (index === steps.length - 1) {
-        reportEvent('tour_completed');
+      reportEvent('step_completed', currentTour.id, step.id);
+      if (index === currentTour.steps.length - 1) {
+        reportEvent('tour_completed', currentTour.id);
       }
       goToStep(index + 1);
     };
@@ -165,13 +178,13 @@
   }
 
   async function goToStep(index) {
-    if (index >= steps.length) {
-      finishTour();
+    if (index >= currentTour.steps.length) {
+      finishTour('completed');
       return;
     }
     currentIndex = index;
-    const step = steps[index];
-    const target = await waitForElement(step.selector, 4000);
+    const step = currentTour.steps[index];
+    const target = await waitForElement(step.selector, STEP_WAIT_TIMEOUT_MS);
     if (!target) {
       console.warn(
         `[Jira Onboarding Guide] Nie znaleziono elementu dla kroku "${step.id}" ` +
@@ -214,22 +227,83 @@
 
   async function finishTour() {
     removeOverlay();
+    const finishedTour = currentTour;
+    currentTour = null;
     currentIndex = -1;
-    await markSeen();
+    if (finishedTour) {
+      await markTourSeen(finishedTour.id);
+    }
     showLauncher();
   }
 
-  async function startTour() {
+  async function startTour(tourId) {
     const { auth, authRequired } = await getAuthGate();
     if (authRequired && !auth) {
       showLauncher({ locked: true });
       return;
     }
-    steps = await loadSteps();
-    if (!steps.length) {
+    if (!tours.length) {
+      tours = await loadTours();
+    }
+    const tour = tours.find((t) => t.id === tourId);
+    if (!tour || !tour.steps || !tour.steps.length) {
       return;
     }
+    currentTour = tour;
     goToStep(0);
+  }
+
+  // --- Launcher + menu wyboru samouczka ---
+
+  function closeTourMenu() {
+    if (tourMenuEl) {
+      tourMenuEl.remove();
+      tourMenuEl = null;
+    }
+    document.removeEventListener('click', onOutsideClickCloseMenu, true);
+  }
+
+  function onOutsideClickCloseMenu(e) {
+    if (tourMenuEl && !tourMenuEl.contains(e.target) && e.target !== launcherEl) {
+      closeTourMenu();
+    }
+  }
+
+  async function openTourMenu() {
+    if (tourMenuEl) {
+      closeTourMenu();
+      return;
+    }
+    if (!tours.length) {
+      tours = await loadTours();
+    }
+    if (!tours.length) {
+      return;
+    }
+    const seenTourIds = await getSeenTourIds();
+
+    tourMenuEl = document.createElement('div');
+    tourMenuEl.className = 'joc-tour-menu';
+    tours.forEach((tour) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      const available = Boolean(safeQuery(tour.steps[0]?.selector));
+      item.className = available
+        ? 'joc-tour-menu__item'
+        : 'joc-tour-menu__item joc-tour-menu__item--unavailable';
+      const seenMark = seenTourIds.includes(tour.id) ? ' ✓' : '';
+      item.textContent = `${tour.title}${seenMark}`;
+      item.title = available
+        ? 'Uruchom ten samouczek'
+        : 'Nie znaleziono pol tego samouczka na biezacej stronie - mozna mimo to sprobowac';
+      item.onclick = () => {
+        closeTourMenu();
+        startTour(tour.id);
+      };
+      tourMenuEl.appendChild(item);
+    });
+    document.body.appendChild(tourMenuEl);
+    document.addEventListener('click', onOutsideClickCloseMenu, true);
   }
 
   function showLauncher({ locked = false } = {}) {
@@ -237,24 +311,26 @@
       launcherEl.remove();
       launcherEl = null;
     }
+    closeTourMenu();
     launcherEl = document.createElement('button');
     launcherEl.className = 'joc-launcher';
     launcherEl.type = 'button';
     if (locked) {
       launcherEl.textContent = '\u{1F512}';
-      launcherEl.title = 'Zaloguj sie, aby uruchomic samouczek onboardingowy';
+      launcherEl.title = 'Zaloguj sie, aby uruchomic samouczki onboardingowe';
       launcherEl.onclick = () => {
         chrome.runtime.sendMessage({ type: 'JOC_OPEN_PAGE', page: 'popup/popup.html' });
       };
     } else {
       launcherEl.textContent = '?';
-      launcherEl.title = 'Uruchom samouczek onboardingowy';
-      launcherEl.onclick = () => startTour();
+      launcherEl.title = 'Samouczki onboardingowe';
+      launcherEl.onclick = () => openTourMenu();
     }
     document.body.appendChild(launcherEl);
   }
 
   function hideLauncher() {
+    closeTourMenu();
     if (launcherEl) {
       launcherEl.style.display = 'none';
     }
@@ -351,21 +427,40 @@
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'JOC_START_TOUR') {
-      startTour();
+      startTour(message.tourId);
     } else if (message.type === 'JOC_RESTART_TOUR') {
-      chrome.storage.local.set({ tourSeen: false }).then(() => startTour());
+      resetTourSeen(message.tourId).then(() => startTour(message.tourId));
     } else if (message.type === 'JOC_START_PICKER') {
       startPicker();
     } else if (message.type === 'JOC_STOP_PICKER') {
       stopPicker();
     } else if (message.type === 'JOC_GET_STATUS') {
-      isSeen().then((seen) => sendResponse({ seen }));
+      (async () => {
+        const loadedTours = tours.length ? tours : await loadTours();
+        tours = loadedTours;
+        const seenTourIds = await getSeenTourIds();
+        sendResponse({
+          tours: loadedTours.map((t) => ({
+            id: t.id,
+            title: t.title,
+            seen: seenTourIds.includes(t.id),
+          })),
+        });
+      })();
       return true;
     }
     return undefined;
   });
 
   // --- Autostart przy pierwszej wizycie ---
+
+  async function detectAvailableTour(candidateTours) {
+    const results = await Promise.all(
+      candidateTours.map((tour) => waitForElement(tour.steps[0]?.selector, TOUR_DETECT_TIMEOUT_MS))
+    );
+    const index = results.findIndex((el) => el !== null);
+    return index >= 0 ? candidateTours[index] : null;
+  }
 
   (async function init() {
     const { auth, authRequired } = await getAuthGate();
@@ -374,16 +469,20 @@
       return;
     }
     showLauncher();
-    const seen = await isSeen();
-    if (seen) {
+
+    tours = await loadTours();
+    if (!tours.length) {
       return;
     }
-    steps = await loadSteps();
-    if (!steps.length) {
+    const seenTourIds = await getSeenTourIds();
+    const unseenTours = tours.filter((t) => !seenTourIds.includes(t.id) && t.steps?.length);
+    if (!unseenTours.length) {
       return;
     }
-    const firstTarget = await waitForElement(steps[0].selector, 8000);
-    if (firstTarget) {
+
+    const tourToStart = await detectAvailableTour(unseenTours);
+    if (tourToStart) {
+      currentTour = tourToStart;
       goToStep(0);
     }
   })();
