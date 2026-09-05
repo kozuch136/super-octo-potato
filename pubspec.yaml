@@ -1,0 +1,41 @@
+name: wifi_tv_remote
+description: >
+  Uniwersalny pilot do telewizora sterowany po WiFi (Android TV / Google TV,
+  Samsung Tizen, LG webOS) bez reklam.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Persistence for paired devices / keys
+  shared_preferences: ^2.3.2
+  flutter_secure_storage: ^9.2.2 # ADB private key, LG client-key, Samsung token
+
+  # State management (simple, no extra boilerplate)
+  provider: ^6.1.2
+
+  # Networking primitives used by all three TV backends
+  web_socket_channel: ^3.0.1 # LG webOS + Samsung Tizen (JSON over WebSocket)
+
+  # RSA keypair generation + PKCS#1 v1.5 / SHA-1 signing for the ADB
+  # (Android Debug Bridge) auth handshake used to control Android TV / Google
+  # TV / Mi Box devices. https://pub.dev/packages/pointycastle
+  pointycastle: ^3.9.1
+  asn1lib: ^1.5.5 # DER helpers used while building the ADB RSA public key blob
+
+  uuid: ^4.5.1
+  package_info_plus: ^8.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
