@@ -1,4 +1,5 @@
 import Foundation
+import Translation
 
 enum TranslatorError: LocalizedError {
     case missingAPIKey
@@ -7,6 +8,9 @@ enum TranslatorError: LocalizedError {
     case refusal
     case cliNotFound
     case cli(String)
+    case ollama(String)
+    case appleUnavailable
+    case appleLanguageMissing
 
     var errorDescription: String? {
         switch self {
@@ -16,28 +20,42 @@ enum TranslatorError: LocalizedError {
         case .refusal: return "Model odmówił tłumaczenia."
         case .cliNotFound: return "Nie znaleziono programu `claude`. Zainstaluj Claude Code i zaloguj się (`claude` → /login)."
         case .cli(let msg): return "Claude Code: \(msg.prefix(300))"
+        case .ollama(let msg): return "Ollama: \(msg.prefix(300)) – czy Ollama działa i model jest pobrany?"
+        case .appleUnavailable: return "Apple Translation w tej aplikacji wymaga macOS 26.4+."
+        case .appleLanguageMissing: return "Brak pobranych języków Apple Translation – pobierz je w Ustawieniach LiveScribe."
         }
     }
 }
 
 /// Tłumaczy tekst strumieniowo. `onUpdate` dostaje dotychczasowy (narastający) wynik.
+/// `from`/`to` to identyfikatory języków z `Languages` (np. "pl-PL", "en-US").
 protocol Translator {
     func translate(_ text: String, from: String, to: String,
                    onUpdate: @escaping @MainActor (String) -> Void) async throws -> String
 }
 
 enum TranslatorFactory {
-    static func make() -> Translator {
+    static func claude() -> Translator {
         switch AppSettings.backend {
         case .api: return ClaudeAPITranslator()
         case .claudeCode: return ClaudeCodeTranslator()
         }
     }
+
+    /// Tłumacz tekstowy dla wybranego silnika końcowego (`.whisper` obsługuje AppState osobno).
+    static func make(_ engine: FinalEngine) -> Translator {
+        switch engine {
+        case .claude, .whisper: return claude()
+        case .gemma: return OllamaTranslator()
+        case .apple: return AppleTranslator()
+        }
+    }
 }
 
 enum Prompt {
-    static func instructions(from: String, to: String) -> String {
-        """
+    static func instructions(from fromID: String, to toID: String) -> String {
+        let from = Languages.name(for: fromID), to = Languages.name(for: toID)
+        return """
         You are a real-time interpreter for dictated speech. The text comes from speech recognition \
         in \(from) and may contain recognition errors or missing punctuation. Translate it into \(to). \
         Fix obvious recognition mistakes, keep the speaker's meaning and tone, and use natural punctuation. \
@@ -232,5 +250,90 @@ struct ClaudeCodeTranslator: Translator {
         } onCancel: {
             if process.isRunning { process.terminate() }
         }
+    }
+}
+
+
+// MARK: - TranslateGemma (lub inny model) przez lokalną Ollamę
+// Docs: https://github.com/ollama/ollama/blob/main/docs/api.md  (POST /api/chat, NDJSON)
+
+struct OllamaTranslator: Translator {
+    func translate(_ text: String, from: String, to: String,
+                   onUpdate: @escaping @MainActor (String) -> Void) async throws -> String {
+        guard let url = URL(string: AppSettings.ollamaURL + "/api/chat") else {
+            throw TranslatorError.ollama("zły adres")
+        }
+        let prompt = Prompt.instructions(from: from, to: to) + "\n\n" + text
+        let body: [String: Any] = [
+            "model": AppSettings.ollamaModel,
+            "messages": [["role": "user", "content": prompt]],
+            "stream": true,
+            "keep_alive": "30m",                 // trzymaj model w pamięci między dyktowaniami
+            "options": ["temperature": 0],
+        ]
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "content-type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let bytes: URLSession.AsyncBytes, response: URLResponse
+        do { (bytes, response) = try await URLSession.shared.bytes(for: req) }
+        catch { throw TranslatorError.ollama(error.localizedDescription) }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard status == 200 else {
+            var err = ""
+            for try await line in bytes.lines { err += line }
+            throw TranslatorError.ollama("HTTP \(status) \(err)")
+        }
+
+        var output = ""
+        for try await line in bytes.lines {
+            try Task.checkCancellation()
+            guard let data = line.data(using: .utf8),
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+            if let err = obj["error"] as? String { throw TranslatorError.ollama(err) }
+            if let msg = obj["message"] as? [String: Any], let piece = msg["content"] as? String, !piece.isEmpty {
+                output += piece
+                let snapshot = output
+                await onUpdate(snapshot)
+            }
+            if obj["done"] as? Bool == true { break }
+        }
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+// MARK: - Apple Translation (na urządzeniu)
+// Docs: https://developer.apple.com/documentation/translation/translationsession
+
+actor AppleTranslationService {
+    static let shared = AppleTranslationService()
+    private var session: Any?
+    private var pair = ""
+
+    func translate(_ text: String, from: String, to: String) async throws -> String {
+        guard #available(macOS 26.4, *) else { throw TranslatorError.appleUnavailable }
+        let src = Locale.Language(identifier: Languages.code(for: from))
+        let dst = Locale.Language(identifier: Languages.code(for: to))
+        let key = "\(from)>\(to)"
+
+        if pair != key || session == nil {
+            let status = await LanguageAvailability().status(from: src, to: dst)
+            guard status == .installed else { throw TranslatorError.appleLanguageMissing }
+            session = TranslationSession(installedSource: src, target: dst, preferredStrategy: .lowLatency)
+            pair = key
+        }
+        guard let s = session as? TranslationSession else { throw TranslatorError.appleUnavailable }
+        let response = try await s.translate(text)
+        return response.targetText
+    }
+}
+
+struct AppleTranslator: Translator {
+    func translate(_ text: String, from: String, to: String,
+                   onUpdate: @escaping @MainActor (String) -> Void) async throws -> String {
+        let result = try await AppleTranslationService.shared.translate(text, from: from, to: to)
+        await onUpdate(result)
+        return result
     }
 }

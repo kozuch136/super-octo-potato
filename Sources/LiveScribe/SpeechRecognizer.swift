@@ -13,7 +13,7 @@ enum SpeechError: LocalizedError {
 /// Strumieniowe rozpoznawanie mowy (Apple Speech, na urządzeniu jeśli dostępne).
 /// Docs: https://developer.apple.com/documentation/speech/sfspeechrecognizer
 @MainActor
-final class SpeechRecognizer {
+final class SpeechRecognizer: SpeechEngine {
     var onPartial: ((String) -> Void)?
 
     private let engine = AVAudioEngine()

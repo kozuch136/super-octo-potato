@@ -5,22 +5,26 @@ Aplikacja na macOS (pasek menu) w stylu [Handy](https://github.com/cjpais/Handy)
 ## Jak działa
 
 1. Przytrzymaj **prawy ⌥ Option** (zmienisz w Ustawieniach) i mów.
-2. Mowa → tekst: Apple Speech, na urządzeniu ([SFSpeechRecognizer](https://developer.apple.com/documentation/speech/sfspeechrecognizer)).
-3. W trakcie mówienia, przy każdej krótkiej pauzie, Claude tłumaczy tekst strumieniowo – widzisz to w pływającym okienku.
-4. Puszczasz klawisz → tłumaczenie (albo oryginał / oba) wkleja się przez ⌘V.
+2. **Mowa → tekst** lokalnie: **Whisper Large-v3 Turbo** przez [WhisperKit](https://github.com/argmaxinc/argmax-oss-swift), czyli ten sam rodzaj modelu co w Handy (dobry dla polskiego). Alternatywnie Apple Speech.
+3. **Podgląd na żywo**: co ok. 1 s Whisper odświeża tekst, a [Apple Translation](https://developer.apple.com/documentation/translation/translationsession) od razu, lokalnie, tłumaczy go na angielski w pływającym okienku.
+4. Puszczasz klawisz → **tłumaczenie końcowe** wybranym silnikiem → wklejenie ⌘V.
 
-## Claude: subskrypcja lub klucz API
+### Silniki tłumaczenia końcowego
 
-| Tryb | Co potrzebujesz |
-|---|---|
-| **Subskrypcja Claude (domyślnie)** | [Claude Code](https://code.claude.com/docs/en/setup) zainstalowany i zalogowany kontem Pro/Max (`claude` → `/login`). Aplikacja wywołuje `claude -p` w trybie [headless](https://code.claude.com/docs/en/headless) – bez klucza API. |
-| **Klucz API** | Klucz z [platform.claude.com](https://platform.claude.com/) – zapisywany w pęku kluczy. Najszybszy tryb (bez uruchamiania procesu CLI). |
+| Silnik | Jakość | Offline | Uwagi |
+|---|---|---|---|
+| **Claude** (domyślny) | najlepsza, poprawia błędy rozpoznawania | nie | subskrypcja (Claude Code) lub klucz API |
+| **TranslateGemma** przez [Ollama](https://ollama.com) | bardzo dobra | tak | `ollama pull translategemma:4b` (lub `:12b` przy 16 GB+ RAM) |
+| **Whisper translate** | dobra, czasem dosłowna | tak | mowa → EN w jednym kroku; wymaga pełnego `large-v3` (Turbo nie tłumaczy) |
+| **Apple Translation** | średnia/dobra | tak | najszybszy |
 
-Domyślny model: `claude-opus-5-5`. Dla mniejszych opóźnień przy tłumaczeniu na żywo możesz w Ustawieniach wpisać `claude-haiku-5-5`.
+Podgląd na żywo może używać Apple Translation (domyślnie), tego samego silnika co końcowy, albo być wyłączony.
+
+**W pełni offline:** Whisper + (TranslateGemma lub Whisper translate lub Apple).
 
 ## Budowanie
 
-Wymagania: macOS 14+, Xcode 15+ (lub Command Line Tools ze Swift 5.9+).
+Wymagania: macOS 15+ (Apple Translation w aplikacji: macOS 26.4+), Xcode 16+, Apple Silicon zalecany.
 
 ```bash
 ./scripts/build_app.sh
@@ -33,6 +37,8 @@ Albo w Xcode: `File → Open…` → `Package.swift` (do uruchamiania z uprawnie
 ## Uprawnienia (przy pierwszym uruchomieniu)
 
 - **Mikrofon** i **Rozpoznawanie mowy** – okienka systemowe.
+- **Języki Apple Translation** – w Ustawieniach LiveScribe kliknij „Pobierz języki Apple Translation”.
+- **Model Whisper** pobiera się przy pierwszym uruchomieniu (status w menu).
 - **Dostępność** (Ustawienia systemowe → Prywatność i ochrona → Dostępność) – potrzebna do globalnego skrótu i wklejania ⌘V. Bez niej tekst trafia tylko do schowka.
 
 > Po każdym przebudowaniu (podpis ad-hoc) macOS może wymagać ponownego włączenia LiveScribe w „Dostępności” – usuń stary wpis i dodaj nowy.
@@ -43,8 +49,9 @@ Albo w Xcode: `File → Open…` → `Package.swift` (do uruchamiania z uprawnie
 Sources/LiveScribe/
   LiveScribeApp.swift   – pasek menu + okno ustawień
   AppState.swift        – logika: skrót → nagrywanie → tłumaczenie → wklejenie
+  WhisperEngine.swift   – Whisper (WhisperKit): nagrywanie 16 kHz, podgląd, translate
   SpeechRecognizer.swift– Apple Speech (strumieniowo)
-  Translator.swift      – Claude API (SSE) i Claude Code CLI (stream-json)
+  Translator.swift      – Claude (API/CLI), Ollama, Apple Translation
   HotkeyMonitor.swift   – globalny skrót (klawisz modyfikujący)
   Paster.swift          – schowek + ⌘V
   Overlay.swift         – pływające okienko z podglądem
@@ -56,4 +63,8 @@ Sources/LiveScribe/
 - Claude Messages API / streaming: https://platform.claude.com/docs/en/build-with-claude/streaming
 - Claude Code CLI: https://code.claude.com/docs/en/cli-reference
 - Apple Speech: https://developer.apple.com/documentation/speech
+- Apple Translation: https://developer.apple.com/documentation/translation
+- WhisperKit: https://github.com/argmaxinc/argmax-oss-swift
+- Ollama API: https://github.com/ollama/ollama/blob/main/docs/api.md
+- TranslateGemma: https://blog.google/innovation-and-ai/technology/developers-tools/translategemma/
 - MenuBarExtra: https://developer.apple.com/documentation/swiftui/menubarextra

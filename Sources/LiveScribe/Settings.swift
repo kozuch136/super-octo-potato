@@ -13,6 +13,39 @@ enum Backend: String, CaseIterable, Identifiable {
     }
 }
 
+enum STTEngine: String, CaseIterable, Identifiable {
+    case whisper, apple
+    var id: String { rawValue }
+    var label: String { self == .whisper ? "Whisper (lokalnie, jak w Handy)" : "Apple Speech (systemowy)" }
+}
+
+/// Silnik podglądu tłumaczenia w trakcie mówienia.
+enum PreviewEngine: String, CaseIterable, Identifiable {
+    case apple, final, off
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .apple: return "Apple Translation (najszybszy, lokalny)"
+        case .final: return "Ten sam co końcowy"
+        case .off: return "Wyłączony"
+        }
+    }
+}
+
+/// Silnik tłumaczenia tekstu, który zostanie wklejony.
+enum FinalEngine: String, CaseIterable, Identifiable {
+    case claude, gemma, whisper, apple
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .claude: return "Claude (najlepsza jakość)"
+        case .gemma: return "TranslateGemma przez Ollama (lokalnie)"
+        case .whisper: return "Whisper translate (mowa → EN, lokalnie)"
+        case .apple: return "Apple Translation (lokalnie)"
+        }
+    }
+}
+
 enum OutputMode: String, CaseIterable, Identifiable {
     case translation, original, both
     var id: String { rawValue }
@@ -76,6 +109,8 @@ enum Languages {
         .init(id: "zh-CN", name: "Chinese (Simplified)"),
     ]
     static func name(for id: String) -> String { all.first { $0.id == id }?.name ?? id }
+    /// Kod języka ISO 639-1 (np. "pl") – dla Whisper i Apple Translation.
+    static func code(for id: String) -> String { String(id.prefix { $0 != "-" }) }
 }
 
 /// Klucze UserDefaults (używane też przez @AppStorage w SettingsView).
@@ -86,7 +121,13 @@ enum Keys {
     static let sourceLang = "sourceLang"
     static let targetLang = "targetLang"
     static let outputMode = "outputMode"
-    static let liveTranslation = "liveTranslation"
+    static let sttEngine = "sttEngine"
+    static let whisperModel = "whisperModel"
+    static let whisperTranslateModel = "whisperTranslateModel"
+    static let previewEngine = "previewEngine"
+    static let finalEngine = "finalEngine"
+    static let ollamaModel = "ollamaModel"
+    static let ollamaURL = "ollamaURL"
     static let hotkeyKey = "hotkeyKey"
     static let hotkeyMode = "hotkeyMode"
     static let autoPaste = "autoPaste"
@@ -94,6 +135,12 @@ enum Keys {
 
 struct AppSettings {
     static let defaultModel = "claude-opus-5-5"
+    /// Large-v3 Turbo – szybki i dobry dla polskiego (nazwy modeli: README WhisperKit).
+    static let defaultWhisperModel = "large-v3-v20240930_turbo"
+    /// Pełny Large-v3 – Turbo nie był uczony zadania „translate”.
+    static let defaultWhisperTranslateModel = "large-v3_947MB"
+    static let defaultOllamaModel = "translategemma:4b"
+    static let defaultOllamaURL = "http://localhost:11434"
 
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
@@ -103,7 +150,13 @@ struct AppSettings {
             Keys.sourceLang: "pl-PL",
             Keys.targetLang: "en-US",
             Keys.outputMode: OutputMode.translation.rawValue,
-            Keys.liveTranslation: true,
+            Keys.sttEngine: STTEngine.whisper.rawValue,
+            Keys.whisperModel: defaultWhisperModel,
+            Keys.whisperTranslateModel: defaultWhisperTranslateModel,
+            Keys.previewEngine: PreviewEngine.apple.rawValue,
+            Keys.finalEngine: FinalEngine.claude.rawValue,
+            Keys.ollamaModel: defaultOllamaModel,
+            Keys.ollamaURL: defaultOllamaURL,
             Keys.hotkeyKey: HotkeyKey.rightOption.rawValue,
             Keys.hotkeyMode: HotkeyMode.hold.rawValue,
             Keys.autoPaste: true,
@@ -120,7 +173,18 @@ struct AppSettings {
     static var sourceLang: String { d.string(forKey: Keys.sourceLang) ?? "pl-PL" }
     static var targetLang: String { d.string(forKey: Keys.targetLang) ?? "en-US" }
     static var outputMode: OutputMode { OutputMode(rawValue: d.string(forKey: Keys.outputMode) ?? "") ?? .translation }
-    static var liveTranslation: Bool { d.bool(forKey: Keys.liveTranslation) }
+    static var sttEngine: STTEngine { STTEngine(rawValue: d.string(forKey: Keys.sttEngine) ?? "") ?? .whisper }
+    static var whisperModel: String { nonEmpty(Keys.whisperModel, defaultWhisperModel) }
+    static var whisperTranslateModel: String { nonEmpty(Keys.whisperTranslateModel, defaultWhisperTranslateModel) }
+    static var previewEngine: PreviewEngine { PreviewEngine(rawValue: d.string(forKey: Keys.previewEngine) ?? "") ?? .apple }
+    static var finalEngine: FinalEngine { FinalEngine(rawValue: d.string(forKey: Keys.finalEngine) ?? "") ?? .claude }
+    static var ollamaModel: String { nonEmpty(Keys.ollamaModel, defaultOllamaModel) }
+    static var ollamaURL: String { nonEmpty(Keys.ollamaURL, defaultOllamaURL) }
+
+    private static func nonEmpty(_ key: String, _ fallback: String) -> String {
+        let v = (d.string(forKey: key) ?? "").trimmingCharacters(in: .whitespaces)
+        return v.isEmpty ? fallback : v
+    }
     static var hotkeyKey: HotkeyKey { HotkeyKey(rawValue: d.string(forKey: Keys.hotkeyKey) ?? "") ?? .rightOption }
     static var hotkeyMode: HotkeyMode { HotkeyMode(rawValue: d.string(forKey: Keys.hotkeyMode) ?? "") ?? .hold }
     static var autoPaste: Bool { d.bool(forKey: Keys.autoPaste) }
